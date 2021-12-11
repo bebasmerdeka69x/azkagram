@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart' as hivedb;
 import 'config.dart';
 
 class MainPage extends StatefulWidget {
+
   const MainPage({Key? key, required this.box, required this.userData})
       : super(key: key);
 
@@ -11,9 +12,11 @@ class MainPage extends StatefulWidget {
 
   @override
   MainState createState() => MainState();
+
 }
 
 class MainState extends State<MainPage> {
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -34,8 +37,9 @@ class MainState extends State<MainPage> {
             ),
           );
         }
-        
+
       },
     );
   }
+  
 }
