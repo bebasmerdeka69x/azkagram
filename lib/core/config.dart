@@ -1,0 +1,2 @@
+var widthMobile = 600;
+

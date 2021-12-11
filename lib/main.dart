@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart' as hivedb;
-import 'pages/main.dart';
-import 'pages/sign.dart';
+import 'core/sign.dart';
+import 'core/main.dart';
 
 void main() async {
   await hivedb.Hive.initFlutter();
   hivedb.Box<dynamic> box = await hivedb.Hive.openBox("azkagram");
 
+  // setstatus bar transparant
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -17,7 +18,6 @@ void main() async {
     ),
   );
 
-
   List user = box.get('user', defaultValue: []);
   if (user.isNotEmpty) {
     for (var i = 0; i < user.length; i++) {
@@ -25,13 +25,22 @@ void main() async {
       Map loop_data = user[i];
       if (loop_data["sign"]) {
         runApp(
-           MaterialApp(
+          MaterialApp(
             debugShowCheckedModeBanner: false,
-            home: MainHomePage(box: box, userData: loop_data,),
+            home: MainPage(
+              box: box,
+              userData: loop_data,
+            ),
           ),
         );
       }
     }
+    runApp(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: SignPage(box: box),
+      ),
+    );
   } else {
     runApp(
       MaterialApp(
