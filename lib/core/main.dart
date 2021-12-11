@@ -12,20 +12,25 @@ class MainPage extends StatefulWidget {
 
   @override
   MainState createState() => MainState();
+  
 }
 
 class MainState extends State<MainPage> {
+
   @override
   Widget build(BuildContext context) {
+
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < widthMobile) {
-          
+
         } else {
 
         }
         return Scaffold();
       },
     );
+
   }
+
 }
