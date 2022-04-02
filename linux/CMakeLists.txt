@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(runner LANGUAGES CXX)
 
-set(BINARY_NAME "Azkagram")
-set(APPLICATION_ID "com.azkadev.azkagram")
+set(BINARY_NAME "azkagram")
+set(APPLICATION_ID "com.example.azkagram")
 
 cmake_policy(SET CMP0063 NEW)
 
