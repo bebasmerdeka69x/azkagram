@@ -20,6 +20,9 @@ void main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
+  
+
+
   Tdlib tg = Tdlib("libtdjson.so", {
     'api_id': 1917085,
     'api_hash': 'a612212e6ac3ff1f97a99b2e0f050894',
