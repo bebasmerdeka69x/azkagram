@@ -5,7 +5,7 @@ Pengembangan application azkagram akan di teruskan setelah saya libur dari proje
 
 ## Screenshot
 
-![Screenshot from 2022-04-02 16-35-58](https://user-images.githubusercontent.com/82513502/161377233-65e5f511-1c38-4ee5-9c78-a72f80ef3a37.png)
+![Screenshot from 2022-04-28 18-46-02](https://user-images.githubusercontent.com/82513502/165748979-b0bb2fba-b462-4272-b8ab-a5c6765e9809.png)
 
 ## Build App Release
 
