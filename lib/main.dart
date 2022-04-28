@@ -12,6 +12,8 @@ import 'dart:io';
 String path = Directory.current.path;
 
 void main() async {
+
+  // set status bar android transparent
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -21,8 +23,6 @@ void main() async {
     ),
   );
   
-
-
   Tdlib tg = Tdlib("libtdjson.so", {
     'api_id': 1917085,
     'api_hash': 'a612212e6ac3ff1f97a99b2e0f050894',
@@ -31,7 +31,10 @@ void main() async {
     'files_directory':
         "/data/data/com.example.example/files/bost" /*"$path/bost"*/,
   });
+  
+  // init isolate 
   tg.initIsolate();
+
   runApp(
     MaterialApp(
       title: 'Flutter Demo',

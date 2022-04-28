@@ -120,7 +120,14 @@ packages:
       name: hexaminate
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.1.0"
+    version: "0.1.2"
+  hive:
+    dependency: "direct main"
+    description:
+      name: hive
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "2.1.0"
   http:
     dependency: transitive
     description:
@@ -230,7 +237,7 @@ packages:
       name: telegram_client
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.1.7"
+    version: "0.2.1"
   term_glyph:
     dependency: transitive
     description:
