@@ -1,5 +1,6 @@
 // ignore_for_file: non_constant_identifier_names, unused_local_variable, use_build_context_synchronously, duplicate_ignore, dead_code
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,35 +10,35 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:telegram_client/telegram_client.dart';
 import 'package:simulate/simulate.dart';
+import 'package:path_provider/path_provider.dart';
 
+bool is_debug = false;
 void main(List<String> args) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  Directory appSupport = await getApplicationSupportDirectory();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     systemNavigationBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
     systemNavigationBarIconBrightness: Brightness.dark,
   ));
-  await Hive.initFlutter();
+  Hive.init(appSupport.path);
   Box<dynamic> box = await Hive.openBox('telegram_client');
   Widget typePage;
   List users = box.get("users", defaultValue: []);
-
   for (var i = 0; i < users.length; i++) {
     var loop_data = users[i];
-    if (loop_data is Map &&
-        loop_data["is_sign"] is bool &&
-        loop_data["is_sign"]) {
+    if (loop_data is Map && loop_data["is_sign"] is bool && loop_data["is_sign"]) {
       Tdlib tg = Tdlib("libtdjson.so", {
-        'database_directory': "./client/",
-        'files_directory': "./client/",
+        'database_directory': "${appSupport.path}/$i/",
+        'files_directory': "${appSupport.path}/$i/",
       });
       tg.on("update", (UpdateTd update) {
         try {
           if (update.raw["@type"] is String) {
             var type = update.raw["@type"];
             if (type == "error") {
-              if (RegExp(r"^Can't lock file", caseSensitive: false)
-                  .hasMatch(update.raw["message"])) {
+              if (RegExp(r"^Can't lock file", caseSensitive: false).hasMatch(update.raw["message"])) {
                 print("eror");
                 exit(1);
               }
@@ -49,20 +50,38 @@ void main(List<String> args) async {
       });
       await tg.initIsolate();
       typePage = MainPage(box: box, get_me: loop_data, tg: tg);
-      return simulateApp(home: typePage);
+      if (kDebugMode) {
+        if (Platform.isAndroid) {
+          return runApp(MaterialApp(
+            home: typePage,
+            debugShowCheckedModeBanner: false,
+          ));
+        } else if (Platform.isIOS) {
+          return runApp(MaterialApp(
+            home: typePage,
+            debugShowCheckedModeBanner: false,
+          ));
+        } else {
+          return simulateApp(home: typePage);
+        }
+      } else {
+        return runApp(MaterialApp(
+          home: typePage,
+          debugShowCheckedModeBanner: false,
+        ));
+      }
     }
   }
   Tdlib tg = Tdlib("libtdjson.so", {
-    'database_directory': "./client/",
-    'files_directory': "./client/",
+    'database_directory': "${appSupport.path}/${(users.isEmpty) ? 0 : users.length + 1}/",
+    'files_directory': "${appSupport.path}/${(users.isEmpty) ? 0 : users.length + 1}/",
   });
   tg.on("update", (UpdateTd update) {
     try {
       if (update.raw["@type"] is String) {
         var type = update.raw["@type"];
         if (type == "error") {
-          if (RegExp(r"^Can't lock file", caseSensitive: false)
-              .hasMatch(update.raw["message"])) {
+          if (RegExp(r"^Can't lock file", caseSensitive: false).hasMatch(update.raw["message"])) {
             print("eror");
             exit(1);
           }
@@ -75,14 +94,32 @@ void main(List<String> args) async {
 
   await tg.initIsolate();
   typePage = SignPage(box: box, tg: tg);
-  return simulateApp(home: typePage);
+  if (kDebugMode) {
+    if (Platform.isAndroid) {
+      return runApp(MaterialApp(
+        home: typePage,
+        debugShowCheckedModeBanner: false,
+      ));
+    } else if (Platform.isIOS) {
+      return runApp(MaterialApp(
+        home: typePage,
+        debugShowCheckedModeBanner: false,
+      ));
+    } else {
+      return simulateApp(home: typePage);
+    }
+  } else {
+    return runApp(MaterialApp(
+      home: typePage,
+      debugShowCheckedModeBanner: false,
+    ));
+  }
 }
 
 class SignPage extends StatefulWidget {
   final Box box;
   final Tdlib tg;
-  const SignPage({Key? key, required this.box, required this.tg})
-      : super(key: key);
+  const SignPage({Key? key, required this.box, required this.tg}) : super(key: key);
 
   @override
   State<SignPage> createState() => _SignPageState();
@@ -108,13 +145,11 @@ class _SignPageState extends State<SignPage> {
   late Map<dynamic, dynamic> state_data;
   final TextEditingController codeTextController = TextEditingController();
   final TextEditingController usernameTextController = TextEditingController();
-  final TextEditingController phoneNumberTextController =
-      TextEditingController();
+  final TextEditingController phoneNumberTextController = TextEditingController();
   final TextEditingController tokenBotTextController = TextEditingController();
   final TextEditingController fullnameTextController = TextEditingController();
   final TextEditingController passwordTextController = TextEditingController();
-  final TextEditingController newpasswordTextController =
-      TextEditingController();
+  final TextEditingController newpasswordTextController = TextEditingController();
 
   @override
   void initState() {
@@ -123,18 +158,9 @@ class _SignPageState extends State<SignPage> {
       tg = widget.tg;
     });
     counts = getValue("count", defaultValue: 0);
-    Map<String, dynamic> state_data_sign_default = {
-      "username": "",
-      "password": "",
-      "type_page": "signin",
-      "is_verified": "",
-      "secret_word": "",
-      "words": "",
-      "add_secret_word": []
-    };
+    Map<String, dynamic> state_data_sign_default = {"username": "", "password": "", "type_page": "signin", "is_verified": "", "secret_word": "", "words": "", "add_secret_word": []};
     try {
-      state_data =
-          getValue("state_data_sign", defaultValue: state_data_sign_default);
+      state_data = getValue("state_data_sign", defaultValue: state_data_sign_default);
     } catch (e) {
       setValue("state_data_sign", state_data_sign_default);
       state_data = state_data_sign_default;
@@ -202,8 +228,7 @@ class _SignPageState extends State<SignPage> {
 
   @override
   Widget build(BuildContext context) {
-    bool is_potrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
+    bool is_potrait = MediaQuery.of(context).orientation == Orientation.portrait;
     debug(state_data["type_page"]);
     showPopUp(titleName, valueBody) {
       showDialog(
@@ -296,8 +321,7 @@ class _SignPageState extends State<SignPage> {
                       return 'Can\'t be empty';
                     }
 
-                    if (!RegExp(r"^[a-z]+$", caseSensitive: false)
-                        .hasMatch(text)) {
+                    if (!RegExp(r"^[a-z]+$", caseSensitive: false).hasMatch(text)) {
                       return "Tolong isi username dengan benar ya! contoh: azka";
                     }
                     print(text);
@@ -397,8 +421,7 @@ class _SignPageState extends State<SignPage> {
                       return 'Can\'t be empty';
                     }
 
-                    if (!RegExp(r"^[0-9]+$", caseSensitive: false)
-                        .hasMatch(text)) {
+                    if (!RegExp(r"^[0-9]+$", caseSensitive: false).hasMatch(text)) {
                       return "Tolong isi dengan angka ya!";
                     }
                     if (text.length < 5) {
@@ -498,8 +521,7 @@ class _SignPageState extends State<SignPage> {
                       return 'Can\'t be empty';
                     }
 
-                    if (!RegExp(r"^[0-9]:.*$", caseSensitive: false)
-                        .hasMatch(text)) {
+                    if (!RegExp(r"^[0-9]:.*$", caseSensitive: false).hasMatch(text)) {
                       return "Tolong isi dengan benar ya";
                     }
                     print(text);
@@ -597,8 +619,7 @@ class _SignPageState extends State<SignPage> {
                       return 'Can\'t be empty';
                     }
 
-                    if (!RegExp(r"^[0-9]+$", caseSensitive: false)
-                        .hasMatch(text)) {
+                    if (!RegExp(r"^[0-9]+$", caseSensitive: false).hasMatch(text)) {
                       return "Tolong isi dengan benar ya";
                     }
                     if (text.length != 5) {
@@ -998,8 +1019,7 @@ class _SignPageState extends State<SignPage> {
                   child: CircularProgressIndicator(),
                 ),
               ),
-              ...titlePage(
-                  "Your Phone Number", "Please typing your phone number"),
+              ...titlePage("Your Phone Number", "Please typing your phone number"),
               const SizedBox(
                 height: 20,
               ),
@@ -1009,10 +1029,10 @@ class _SignPageState extends State<SignPage> {
                 child: MaterialButton(
                   onPressed: () async {
                     try {
-                      var res =
-                          await tg.request("setAuthenticationPhoneNumber", {
+                      var res = await tg.request("setAuthenticationPhoneNumber", {
                         "phone_number": phoneNumberTextController.text,
                       });
+
                       debug(res);
                     } catch (e) {
                       debug(e);
@@ -1039,8 +1059,7 @@ class _SignPageState extends State<SignPage> {
                 ),
               ),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1096,8 +1115,7 @@ class _SignPageState extends State<SignPage> {
                   child: CircularProgressIndicator(),
                 ),
               ),
-              ...titlePage(
-                  "Your Phone Number", "Please typing your phone number"),
+              ...titlePage("Your Phone Number", "Please typing your phone number"),
               const SizedBox(
                 height: 20,
               ),
@@ -1127,8 +1145,7 @@ class _SignPageState extends State<SignPage> {
                 ),
               ),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1184,8 +1201,7 @@ class _SignPageState extends State<SignPage> {
                   child: CircularProgressIndicator(),
                 ),
               ),
-              ...titlePage("Your Account Code",
-                  "Tolong kirim kode telegram dari Nomor: ${phoneNumberTextController.text}"),
+              ...titlePage("Your Account Code", "Tolong kirim kode telegram dari Nomor: ${phoneNumberTextController.text}"),
               const SizedBox(
                 height: 20,
               ),
@@ -1202,29 +1218,37 @@ class _SignPageState extends State<SignPage> {
                       List getUsers = getValue("users", defaultValue: []);
                       for (var i = 0; i < getUsers.length; i++) {
                         var loop_data = getUsers[i];
-                        if (loop_data is Map &&
-                            loop_data["id"] == get_me["result"]["id"]) {
+                        if (loop_data is Map && loop_data["id"] == get_me["result"]["id"]) {
                           getUsers[i]["is_sign"] = true;
                           setValue("users", getUsers);
-                          Navigator.pushAndRemoveUntil(context,
-                              MaterialPageRoute(
-                                  builder: (BuildContext context) {
-                            return MainPage(
+                          Navigator.pushReplacement<void, void>(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (BuildContext context) => MainPage(
                                 box: widget.box,
-                                get_me: get_me["result"],
-                                tg: tg);
-                          }), ModalRoute.withName('/'));
+                                get_me: loop_data,
+                                tg: tg,
+                              ),
+                            ),
+                          );
                           return;
                         }
                       }
                       get_me["result"]["is_sign"] = true;
                       getUsers.add(get_me["result"]);
                       setValue("users", getUsers);
-                      Navigator.pushAndRemoveUntil(context,
-                          MaterialPageRoute(builder: (BuildContext context) {
-                        return MainPage(
-                            box: widget.box, get_me: get_me["result"], tg: tg);
-                      }), ModalRoute.withName('/'));
+
+                      Navigator.pushReplacement<void, void>(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (BuildContext context) => MainPage(
+                            box: widget.box,
+                            get_me: get_me,
+                            tg: tg,
+                          ),
+                        ),
+                      );
+
                       return;
                     } catch (e) {
                       debug(e);
@@ -1251,8 +1275,7 @@ class _SignPageState extends State<SignPage> {
                 ),
               ),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1308,8 +1331,7 @@ class _SignPageState extends State<SignPage> {
                   child: CircularProgressIndicator(),
                 ),
               ),
-              ...titlePage("Your Account Password",
-                  "Tolong isi password telegram dari Nomor: ${phoneNumberTextController.text}"),
+              ...titlePage("Your Account Password", "Tolong isi password telegram dari Nomor: ${phoneNumberTextController.text}"),
               const SizedBox(
                 height: 20,
               ),
@@ -1339,8 +1361,7 @@ class _SignPageState extends State<SignPage> {
                 ),
               ),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1396,8 +1417,7 @@ class _SignPageState extends State<SignPage> {
                   child: CircularProgressIndicator(),
                 ),
               ),
-              ...titlePage("Your Token Bot",
-                  "Please confirm your token bot from @botfather"),
+              ...titlePage("Your Token Bot", "Please confirm your token bot from @botfather"),
               const SizedBox(
                 height: 20,
               ),
@@ -1405,7 +1425,50 @@ class _SignPageState extends State<SignPage> {
               Padding(
                 padding: const EdgeInsets.all(10),
                 child: MaterialButton(
-                  onPressed: () async {},
+                  onPressed: () async {
+                    try {
+                      var res = await tg.request("checkAuthenticationBotToken", {
+                        "token": tokenBotTextController.text,
+                      });
+                      var get_me = await tg.getMe();
+                      List getUsers = getValue("users", defaultValue: []);
+                      for (var i = 0; i < getUsers.length; i++) {
+                        var loop_data = getUsers[i];
+                        if (loop_data is Map && loop_data["id"] == get_me["result"]["id"]) {
+                          getUsers[i]["is_sign"] = true;
+                          setValue("users", getUsers);
+                          Navigator.pushReplacement<void, void>(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (BuildContext context) => MainPage(
+                                box: widget.box,
+                                get_me: loop_data,
+                                tg: tg,
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                      }
+                      get_me["result"]["is_sign"] = true;
+                      getUsers.add(get_me["result"]);
+                      setValue("users", getUsers);
+                      Navigator.pushReplacement<void, void>(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (BuildContext context) => MainPage(
+                            box: widget.box,
+                            get_me: get_me,
+                            tg: tg,
+                          ),
+                        ),
+                      );
+
+                      return;
+                    } catch (e) {
+                      debug(e);
+                    }
+                  },
                   color: Colors.blue,
                   height: 50,
                   shape: RoundedRectangleBorder(
@@ -1427,8 +1490,7 @@ class _SignPageState extends State<SignPage> {
                 ),
               ),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1477,20 +1539,15 @@ class _SignPageState extends State<SignPage> {
 
         if (is_potrait) {
           return SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics()),
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                  minWidth: constraints.maxHeight,
-                  minHeight: constraints.maxHeight),
+              constraints: BoxConstraints(minWidth: constraints.maxHeight, minHeight: constraints.maxHeight),
               child: type_sign_page,
             ),
           );
         } else {
           return ConstrainedBox(
-            constraints: BoxConstraints(
-                minWidth: constraints.maxHeight,
-                minHeight: constraints.maxHeight),
+            constraints: BoxConstraints(minWidth: constraints.maxHeight, minHeight: constraints.maxHeight),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 25),
               child: Container(
@@ -1521,12 +1578,9 @@ class _SignPageState extends State<SignPage> {
                     ),
                     Expanded(
                       child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics()),
+                        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                         child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                              minWidth: constraints.maxHeight,
-                              minHeight: constraints.maxHeight),
+                          constraints: BoxConstraints(minWidth: constraints.maxHeight, minHeight: constraints.maxHeight),
                           child: type_sign_page,
                         ),
                       ),
@@ -1542,24 +1596,18 @@ class _SignPageState extends State<SignPage> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                        minWidth: constraints.maxHeight,
-                        minHeight: constraints.maxHeight),
+                    constraints: BoxConstraints(minWidth: constraints.maxHeight, minHeight: constraints.maxHeight),
                     child: type_sign_page,
                   ),
                 ),
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                        minWidth: constraints.maxHeight,
-                        minHeight: constraints.maxHeight),
+                    constraints: BoxConstraints(minWidth: constraints.maxHeight, minHeight: constraints.maxHeight),
                     child: type_sign_page,
                   ),
                 ),
@@ -1574,9 +1622,7 @@ class _SignPageState extends State<SignPage> {
 
 class MainPage extends StatefulWidget {
   final Tdlib tg;
-  const MainPage(
-      {Key? key, required this.box, required this.get_me, required this.tg})
-      : super(key: key);
+  const MainPage({Key? key, required this.box, required this.get_me, required this.tg}) : super(key: key);
   final Box box;
   final Map get_me;
   @override
@@ -1588,19 +1634,7 @@ class _MainPageState extends State<MainPage> {
   late String status_tdlib = "helo";
   late bool is_no_connection = false;
 
-  late Map get_me_data = {
-    "state": "succes",
-    "sign": true,
-    "token": "",
-    "id": "",
-    "username": "",
-    "first_name": "",
-    "last_name": "",
-    "password": "",
-    "is_verified": true,
-    "secret_word": "",
-    "random_secret_word": ""
-  };
+  late Map get_me_data = {"state": "succes", "sign": true, "token": "", "id": "", "username": "", "first_name": "", "last_name": "", "password": "", "is_verified": true, "secret_word": "", "random_secret_word": ""};
   getValue(key, defaultvalue) {
     try {
       return widget.box.get(key, defaultValue: defaultvalue);
@@ -1627,7 +1661,6 @@ class _MainPageState extends State<MainPage> {
           var type = update.raw["@type"];
 
           if (type == "updateAuthorizationState") {
-            print("hello world");
             if (update.raw["authorization_state"] is Map) {
               var authStateType = update.raw["authorization_state"]["@type"];
               if (authStateType == "authorizationStateWaitPhoneNumber") {}
@@ -1678,8 +1711,7 @@ class _MainPageState extends State<MainPage> {
             if (text is String && text.isNotEmpty) {
               print(text);
               if (RegExp("/ping", caseSensitive: false).hasMatch(text)) {
-                return await tg.request(
-                    "sendMessage", {"chat_id": chat_id, "text": "pong"});
+                return await tg.request("sendMessage", {"chat_id": chat_id, "text": "pong"});
               }
             }
           }
@@ -1696,11 +1728,26 @@ class _MainPageState extends State<MainPage> {
               is_outgoing = msg["is_outgoing"];
             }
             if (text is String && text.isNotEmpty) {
-              print(text);
               if (RegExp("/ping", caseSensitive: false).hasMatch(text)) {
-                return await tg.request(
-                    "sendMessage", {"chat_id": chat_id, "text": "pong"});
+                return await tg.request("sendMessage", {"chat_id": chat_id, "text": "pong"});
               }
+            }
+            List chats = getValue("chats", []);
+            bool is_found = false;
+            for (var i = 0; i < chats.length; i++) {
+              var loop_data = chats[i];
+              if (loop_data is Map && loop_data["id"] == chat_id) {
+                is_found = true;
+                chats.removeAt(i);
+                Map chat = msg["chat"];
+                chats.insert(0, {...chat, "last_message": msg});
+                setValue("chats", chats);
+              }
+            }
+            if (!is_found) {
+              Map chat = msg["chat"];
+              chats.insert(0, {...chat, "last_message": msg});
+              setValue("chats", chats);
             }
           }
         }
@@ -1773,8 +1820,7 @@ class _MainPageState extends State<MainPage> {
     }
     String subtypePage = getValue("subtype_page", "brainly");
     int indexPage = getValue("index_page", 0);
-    bool is_potrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
+    bool is_potrait = MediaQuery.of(context).orientation == Orientation.portrait;
 
     if (typePage == "chat") {
       if (!is_potrait) {
@@ -1841,30 +1887,10 @@ class _MainPageState extends State<MainPage> {
 
     Widget NavigationBar() {
       List items = [
-        {
-          "icon": const Icon(Iconsax.message, color: Colors.black),
-          "title": const Text("Message"),
-          "selectedColor": Colors.black,
-          "type": "home"
-        },
-        {
-          "icon": const Icon(Iconsax.call, color: Colors.black),
-          "title": const Text("Call"),
-          "selectedColor": Colors.black,
-          "type": "news"
-        },
-        {
-          "icon": const Icon(Iconsax.gallery, color: Colors.black),
-          "title": const Text("Chat"),
-          "selectedColor": Colors.black,
-          "type": "chat"
-        },
-        {
-          "icon": const Icon(Iconsax.profile_2user, color: Colors.black),
-          "title": const Text("Me"),
-          "selectedColor": Colors.black,
-          "type": "me"
-        }
+        {"icon": const Icon(Iconsax.message, color: Colors.black), "title": const Text("Message"), "selectedColor": Colors.black, "type": "home"},
+        {"icon": const Icon(Iconsax.call, color: Colors.black), "title": const Text("Call"), "selectedColor": Colors.black, "type": "news"},
+        {"icon": const Icon(Iconsax.gallery, color: Colors.black), "title": const Text("Chat"), "selectedColor": Colors.black, "type": "chat"},
+        {"icon": const Icon(Iconsax.profile_2user, color: Colors.black), "title": const Text("Me"), "selectedColor": Colors.black, "type": "me"}
       ];
 
       Color? selectedItemColor;
@@ -1912,13 +1938,9 @@ class _MainPageState extends State<MainPage> {
           curve: Curves.easeOutQuint,
           duration: const Duration(milliseconds: 500),
           builder: (context, t, _) {
-            final selectedColor = item["selectedColor"] ??
-                selectedItemColor ??
-                Theme.of(context).primaryColor;
+            final selectedColor = item["selectedColor"] ?? selectedItemColor ?? Theme.of(context).primaryColor;
 
-            final unselectedColor = item["unselectedColor"] ??
-                unselectedItemColor ??
-                Theme.of(context).iconTheme.color;
+            final unselectedColor = item["unselectedColor"] ?? unselectedItemColor ?? Theme.of(context).iconTheme.color;
 
             return Material(
               color: Color.lerp(
@@ -1968,9 +1990,7 @@ class _MainPageState extends State<MainPage> {
                           ),
                           size: 24,
                         ),
-                        child: items.indexOf(item) == indexPage
-                            ? item["activeIcon"] ?? item["icon"]
-                            : item["icon"],
+                        child: items.indexOf(item) == indexPage ? item["activeIcon"] ?? item["icon"] : item["icon"],
                       ),
                       ClipRect(
                         child: SizedBox(
@@ -1979,20 +1999,10 @@ class _MainPageState extends State<MainPage> {
                             alignment: const Alignment(-0.2, 0.0),
                             widthFactor: t,
                             child: Padding(
-                              padding: EdgeInsets.only(
-                                  left: const EdgeInsets.symmetric(
-                                              vertical: 10, horizontal: 16)
-                                          .right /
-                                      2,
-                                  right: const EdgeInsets.symmetric(
-                                          vertical: 10, horizontal: 16)
-                                      .right),
+                              padding: EdgeInsets.only(left: const EdgeInsets.symmetric(vertical: 10, horizontal: 16).right / 2, right: const EdgeInsets.symmetric(vertical: 10, horizontal: 16).right),
                               child: DefaultTextStyle(
                                 style: TextStyle(
-                                  color: Color.lerp(
-                                      selectedColor.withOpacity(0.0),
-                                      selectedColor,
-                                      t),
+                                  color: Color.lerp(selectedColor.withOpacity(0.0), selectedColor, t),
                                   fontWeight: FontWeight.w600,
                                 ),
                                 child: item["title"],
@@ -2057,97 +2067,104 @@ class _MainPageState extends State<MainPage> {
             if (typePage == "home") {
               List chats = getValue("chats", []);
               Widget bodyHome() {
-                return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ...chats.map((res) {
-                        var nick_name = "";
-                        Map last_message = {};
-                        if (res["last_message"] is Map &&
-                            (res["last_message"] as Map).isNotEmpty) {
-                          last_message = res["last_message"];
-                        }
-                        int unread_count = 0;
-                        var date = "";
-                        if (last_message["date"] is int) {
-                          date = last_message["date"].toString();
-                        }
-                        if (res["type"] == "private") {
-                          nick_name = res["first_name"];
-                        } else {
-                          nick_name = res["title"];
-                        }
-                        if (res["detail"] is Map) {
-                          if (res["detail"]["unread_count"] is int) {
-                            unread_count = res["detail"]["unread_count"];
-                          }
-                        }
-                        return InkWell(
-                          onTap: () async {},
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Image.asset(
-                                    "assets/icons/app.png",
-                                    scale: 12,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        nick_name,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(
-                                        height: 5,
-                                      ),
-                                      Text(
-                                        nick_name,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Spacer(),
-                                Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        date,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(
-                                        height: 5,
-                                      ),
-                                      Visibility(
-                                          visible: (unread_count != 0),
-                                          child: Text(
-                                            unread_count.toString(),
-                                          )),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).padding.top,
+                  ),
+                  ...chats.map((res) {
+                    var nick_name = "";
+                    Map last_message = {};
+                    var type_content = "";
+                    if (res["last_message"] is Map && (res["last_message"] as Map).isNotEmpty) {
+                      last_message = res["last_message"];
+                      if (last_message["type_content"] is String && (last_message["type_content"] as String).isNotEmpty) {
+                        type_content = last_message["type_content"];
+                      }
+                    }
+                    print(res["id"]);
+                    int unread_count = 0;
+                    var date = "";
+                    if (last_message["date"] is int) {
+                      date = last_message["date"].toString();
+                    }
+                    if (res["type"] == "private") {
+                      nick_name = res["first_name"];
+                    } else {
+                      nick_name = res["title"];
+                    }
+                    if (res["detail"] is Map) {
+                      if (res["detail"]["unread_count"] is int) {
+                        unread_count = res["detail"]["unread_count"];
+                      }
+                    }
+                    return InkWell(
+                      onTap: () async {
+                        debugPopUp(context, res);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Image.asset(
+                                "assets/icons/app.png",
+                                scale: 12,
+                              ),
                             ),
-                          ),
-                        );
-                      }).toList(),
-                    ]);
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    nick_name,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    height: 5,
+                                  ),
+                                  Text(
+                                    (type_content == "text") ? last_message["text"] : "Unsupported",
+                                    maxLines: 2,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Spacer(),
+                            Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    date,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    height: 5,
+                                  ),
+                                  Visibility(
+                                      visible: (unread_count != 0),
+                                      child: Text(
+                                        unread_count.toString(),
+                                      )),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ]);
               }
 
               return SingleChildScrollView(
@@ -2200,49 +2217,34 @@ class _MainPageState extends State<MainPage> {
                                 bottom: 10,
                               ),
                               child: Align(
-                                alignment: (messages[index]["is_outgoing"]
-                                    ? Alignment.topRight
-                                    : Alignment.topLeft),
+                                alignment: (messages[index]["is_outgoing"] ? Alignment.topRight : Alignment.topLeft),
                                 child: Container(
                                   constraints: BoxConstraints(
-                                    maxWidth:
-                                        MediaQuery.of(context).size.width - 45,
+                                    maxWidth: MediaQuery.of(context).size.width - 45,
                                   ),
                                   decoration: BoxDecoration(
                                     borderRadius: messages[index]["is_outgoing"]
                                         ? BorderRadius.only(
-                                            topRight: Radius.circular(
-                                                (messages.length == (index + 1))
-                                                    ? 0
-                                                    : 11),
+                                            topRight: Radius.circular((messages.length == (index + 1)) ? 0 : 11),
                                             topLeft: const Radius.circular(11),
-                                            bottomRight:
-                                                Radius.circular((index == 0)
-                                                    ? (messages.length == 1)
-                                                        ? 11
-                                                        : 0
-                                                    : 11),
-                                            bottomLeft:
-                                                const Radius.circular(11),
+                                            bottomRight: Radius.circular((index == 0)
+                                                ? (messages.length == 1)
+                                                    ? 11
+                                                    : 0
+                                                : 11),
+                                            bottomLeft: const Radius.circular(11),
                                           )
                                         : BorderRadius.only(
                                             topRight: const Radius.circular(11),
-                                            topLeft: Radius.circular(
-                                                (messages.length == (index + 1))
-                                                    ? 0
-                                                    : 11),
-                                            bottomRight:
-                                                const Radius.circular(11),
-                                            bottomLeft:
-                                                Radius.circular((index == 0)
-                                                    ? (messages.length == 1)
-                                                        ? 11
-                                                        : 0
-                                                    : 11),
+                                            topLeft: Radius.circular((messages.length == (index + 1)) ? 0 : 11),
+                                            bottomRight: const Radius.circular(11),
+                                            bottomLeft: Radius.circular((index == 0)
+                                                ? (messages.length == 1)
+                                                    ? 11
+                                                    : 0
+                                                : 11),
                                           ),
-                                    color: (messages[index]["is_outgoing"]
-                                        ? Colors.blue[200]
-                                        : Colors.grey.shade200),
+                                    color: (messages[index]["is_outgoing"] ? Colors.blue[200] : Colors.grey.shade200),
                                   ),
                                   padding: const EdgeInsets.all(16),
                                   child: Text(
@@ -2317,15 +2319,10 @@ class _MainPageState extends State<MainPage> {
             }
             debug(typePage);
             if (typePage == "settings") {
-              Widget contentListSettings(String title,
-                  {required void Function() onPressed,
-                  required IconData icon,
-                  double? vertical,
-                  double? horizontal}) {
+              Widget contentListSettings(String title, {required void Function() onPressed, required IconData icon, double? vertical, double? horizontal}) {
                 return MaterialButton(
                   onPressed: onPressed,
-                  padding: EdgeInsets.symmetric(
-                      horizontal: horizontal ?? 20, vertical: vertical ?? 20),
+                  padding: EdgeInsets.symmetric(horizontal: horizontal ?? 20, vertical: vertical ?? 20),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -2349,8 +2346,7 @@ class _MainPageState extends State<MainPage> {
               }
 
               Widget bodyChat = SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics()),
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.start,
@@ -2360,8 +2356,7 @@ class _MainPageState extends State<MainPage> {
                       child: chatAppBar(),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(10),
@@ -2371,8 +2366,7 @@ class _MainPageState extends State<MainPage> {
                               color: Colors.grey.withOpacity(1),
                               spreadRadius: 1,
                               blurRadius: 7,
-                              offset: const Offset(
-                                  0, 3), // changes position of shadow
+                              offset: const Offset(0, 3), // changes position of shadow
                             ),
                           ],
                         ),
@@ -2380,17 +2374,12 @@ class _MainPageState extends State<MainPage> {
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            contentListSettings("App Features",
-                                onPressed: () {},
-                                icon: Iconsax.message_question),
-                            contentListSettings("Settings",
-                                onPressed: () {}, icon: Iconsax.setting),
+                            contentListSettings("App Features", onPressed: () {}, icon: Iconsax.message_question),
+                            contentListSettings("Settings", onPressed: () {}, icon: Iconsax.setting),
                             Row(
                               children: const [Expanded(child: Divider())],
                             ),
-                            contentListSettings("App Features",
-                                onPressed: () {},
-                                icon: Iconsax.message_question),
+                            contentListSettings("App Features", onPressed: () {}, icon: Iconsax.message_question),
                           ],
                         ),
                       ),
@@ -2455,11 +2444,7 @@ void debug(Object? data) {
   }
 }
 
-void debugFunction(Tdlib tg,
-    {required String method,
-    Map<String, dynamic>? parameters,
-    bool is_sync = false,
-    bool is_raw = false}) async {
+void debugFunction(Tdlib tg, {required String method, Map<String, dynamic>? parameters, bool is_sync = false, bool is_raw = false}) async {
   try {
     parameters ??= {};
     if (is_sync) {
@@ -2474,4 +2459,64 @@ void debugFunction(Tdlib tg,
   } catch (e) {
     debug(e);
   }
+}
+
+List prettyPrintJson(var input, {bool is_log = false}) {
+  try {
+    if (input is String) {
+    } else {
+      input = json.encode(input);
+    }
+    const JsonDecoder decoder = JsonDecoder();
+    const JsonEncoder encoder = JsonEncoder.withIndent('  ');
+    final dynamic object = decoder.convert(input);
+    final dynamic prettyString = encoder.convert(object);
+    List result = prettyString.split('\n');
+    if (is_log) {
+      for (var element in result) {
+        debug(element);
+      }
+    }
+    return result;
+  } catch (e) {
+    debug(e);
+    return ["error"];
+  }
+}
+
+void debugPopUp(BuildContext context, var res, {bool is_log = false}) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      List results = prettyPrintJson(res, is_log: is_log);
+      return Padding(
+        padding: const EdgeInsets.all(50),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          primary: false,
+          body: Builder(
+            builder: (BuildContext context) {
+              return Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
+                decoration: BoxDecoration(
+                  color: const Color(0xffF0F8FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: EdgeInsets.all(5),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: results.map((e) {
+                      return Text(e);
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    },
+  );
 }
