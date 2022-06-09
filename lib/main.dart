@@ -1,273 +1,210 @@
-// ignore_for_file: non_constant_identifier_names, avoid_print, empty_catches, dead_code
+// ignore_for_file: non_constant_identifier_names, unused_local_variable, use_build_context_synchronously, duplicate_ignore, dead_code
 
-import 'dart:convert';
-
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:hexaminate/hexaminate.dart';
-import 'package:telegram_client/telegram_client.dart';
 import 'dart:io';
 
-String path = Directory.current.path;
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:telegram_client/telegram_client.dart';
+import 'package:simulate/simulate.dart';
 
-void main() async {
+void main(List<String> args) async {
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  ));
+  await Hive.initFlutter();
+  Box<dynamic> box = await Hive.openBox('telegram_client');
+  Widget typePage;
+  List users = box.get("users", defaultValue: []);
 
-  // set status bar android transparent
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      systemNavigationBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
-  );
-  
-  Tdlib tg = Tdlib("libtdjson.so", {
-    'api_id': 1917085,
-    'api_hash': 'a612212e6ac3ff1f97a99b2e0f050894',
-    'database_directory':
-        "/data/data/com.example.example/files/bost" /*"$path/bost"*/,
-    'files_directory':
-        "/data/data/com.example.example/files/bost" /*"$path/bost"*/,
-  });
-  
-  // init isolate 
-  tg.initIsolate();
-
-  runApp(
-    MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      debugShowCheckedModeBanner: false,
-      home: MyHomePage(
-        title: 'Flutter Demo Home Page',
-        tg: tg,
-      ),
-    ),
-  );
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title, required this.tg})
-      : super(key: key);
-  final String title;
-  final Tdlib tg;
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int count = 0;
-  bool _isLoading = false;
-  TextEditingController phone_number = TextEditingController();
-  TextEditingController code = TextEditingController();
-  TextEditingController password = TextEditingController();
-  var chats = [];
-  List messages = [
-    {
-      "is_outgoing": true,
-      "from": {"first_name": "azka"},
-      "chat": {"title": "Roleplayer"},
-      "date": "12345678",
-      "text": "hello world"
-    },
-    {
-      "is_outgoing": false,
-      "from": {"first_name": "azka"},
-      "chat": {"title": "Roleplayer"},
-      "date": "12345678",
-      "text": "hello world"
-    },
-  ];
-
-  final TextEditingController messageController = TextEditingController();
-  final ScrollController scrollController = ScrollController();
-  var updateText = "";
-  bool is_load_chat = false;
-  Map stateData = {
-    "page": "signup",
-    "type": "phone",
-    "type_account": "user",
-    "state": {"first_name": ""},
-    "temp": {"phone_number": "", "code": ""}
-  };
-  bool isLogin = false;
-  @override
-  void initState() {
-    super.initState();
-
-    TelegramApi tg_api = TelegramApi(widget.tg);
-    widget.tg.on("update", (UpdateTd update) async {
-      if (update.raw["@type"] == "updateAuthorizationState") {
-        if (typeof(update.raw["authorization_state"]) == "object") {
-          var authStateType = update.raw["authorization_state"]["@type"];
-          if (authStateType == "authorizationStateWaitPhoneNumber") {
-            setState(() {
-              stateData["page"] = "signup";
-              stateData["type"] = "phone";
-            });
-          }
-          if (authStateType == "authorizationStateWaitCode") {
-            setState(() {
-              stateData["page"] = "signup";
-              stateData["type"] = "code";
-            });
-          }
-          if (authStateType == "authorizationStateWaitPassword") {
-            setState(() {
-              stateData["page"] = "signup";
-              stateData["type"] = "password";
-            });
-          }
-          if (authStateType == "authorizationStateReady") {
-            setState(() {
-              isLogin = true;
-              stateData["page"] = "signin";
-              stateData["type"] = "main";
-              is_load_chat = true;
-            });
-
-            try {
-              var getChat = await tg_api.getChats(is_detail: true);
-              if (getChat["ok"]) {
-                setState(() {
-                  is_load_chat = false;
-                  chats = getChat["result"];
-                });
-              } else {
-                setState(() {
-                  is_load_chat = false;
-                });
+  for (var i = 0; i < users.length; i++) {
+    var loop_data = users[i];
+    if (loop_data is Map &&
+        loop_data["is_sign"] is bool &&
+        loop_data["is_sign"]) {
+      Tdlib tg = Tdlib("libtdjson.so", {
+        'database_directory': "./client/",
+        'files_directory': "./client/",
+      });
+      tg.on("update", (UpdateTd update) {
+        try {
+          if (update.raw["@type"] is String) {
+            var type = update.raw["@type"];
+            if (type == "error") {
+              if (RegExp(r"^Can't lock file", caseSensitive: false)
+                  .hasMatch(update.raw["message"])) {
+                print("eror");
+                exit(1);
               }
-            } catch (e) {}
+            }
+          }
+        } catch (e) {
+          debug(e);
+        }
+      });
+      await tg.initIsolate();
+      typePage = MainPage(box: box, get_me: loop_data, tg: tg);
+      return simulateApp(home: typePage);
+    }
+  }
+  Tdlib tg = Tdlib("libtdjson.so", {
+    'database_directory': "./client/",
+    'files_directory': "./client/",
+  });
+  tg.on("update", (UpdateTd update) {
+    try {
+      if (update.raw["@type"] is String) {
+        var type = update.raw["@type"];
+        if (type == "error") {
+          if (RegExp(r"^Can't lock file", caseSensitive: false)
+              .hasMatch(update.raw["message"])) {
+            print("eror");
+            exit(1);
           }
         }
       }
-      if (update.message.is_found) {
-        if (update.raw["@type"] == "updateNewMessage") {
-          if (update.raw["message"]["@type"] == "message") {
-            try {
-              if (stateData["state"]["id"] ==
-                  update.raw["message"]["chat_id"]) {
-                var result = await widget.tg.jsonMessage(update.raw["message"],
-                    chat_data: stateData["state"]);
-                if (result["ok"]) {
-                  if (stateData["state"]["id"] ==
-                      result["result"]["chat"]["id"]) {
-                    return setState(() {
-                      messages.insert(0, result["result"]);
-                    });
-                  }
-                  List chat_ids_data = [];
-                  for (var i = 0; i < chats.length; i++) {
-                    chat_ids_data.add(chats[i]["id"]);
-                    if (chats[i]["id"] == result["result"]["chat"]["id"]) {
-                      print("ada");
-                      var new_chat_data = chats[i];
-                      new_chat_data["last_message"] = result["result"];
-                      return setState(() {
-                        chats.removeAt(i);
-                        chats.insert(0, new_chat_data);
-                      });
-                    }
-                  }
-                  try {
-                    if (!chat_ids_data
-                        .contains(result["result"]["chat"]["id"])) {
-                      Map new_chat_data = {};
-                      result["result"]["chat"].forEach((key, value) {
-                        new_chat_data[key] = value;
-                      });
-                      new_chat_data["last_message"] = result["result"];
-                      return setState(() {
-                        chats.insert(0, new_chat_data);
-                      });
-                    }
-                  } catch (e) {}
-                } else {
-                  print(result);
-                }
-              } else {
-                List chat_ids_data = [];
-                Map result_data = {
-                  "ok": false,
-                  "result": {"chat": {}}
-                };
-                for (var i = 0; i < chats.length; i++) {
-                  chat_ids_data.add(chats[i]["id"]);
-                  if (chats[i]["id"] == update.raw["message"]["chat_id"]) {
-                    var result = await widget.tg.jsonMessage(
-                        update.raw["message"],
-                        chat_data: chats[i]);
-                    if (result["ok"]) {
-                      result_data = result;
-                      print("ada");
-                      var new_chat_data = chats[i];
-                      new_chat_data["last_message"] = result["result"];
-                      return setState(() {
-                        chats.removeAt(i);
-                        chats.insert(0, new_chat_data);
-                      });
-                    } else {
-                      print(result);
-                    }
-                  }
-                }
+    } catch (e) {
+      debug(e);
+    }
+  });
 
-                try {
-                  if (!chat_ids_data
-                      .contains(result_data["result"]["chat"]["id"])) {
-                    Map new_chat_data = {};
-                    result_data["result"]["chat"].forEach((key, value) {
-                      new_chat_data[key] = value;
-                    });
-                    new_chat_data["last_message"] = result_data["result"];
-                    return setState(() {
-                      chats.insert(0, new_chat_data);
-                    });
-                  }
-                } catch (e) {}
+  await tg.initIsolate();
+  typePage = SignPage(box: box, tg: tg);
+  return simulateApp(home: typePage);
+}
+
+class SignPage extends StatefulWidget {
+  final Box box;
+  final Tdlib tg;
+  const SignPage({Key? key, required this.box, required this.tg})
+      : super(key: key);
+
+  @override
+  State<SignPage> createState() => _SignPageState();
+}
+
+class _SignPageState extends State<SignPage> {
+  late Tdlib tg;
+  late String status_tdlib = "helo";
+  late bool is_no_connection = false;
+  dynamic getValue(key, {dynamic defaultValue}) {
+    try {
+      return widget.box.get(key, defaultValue: defaultValue);
+    } catch (e) {
+      return defaultValue;
+    }
+  }
+
+  setValue(key, value) {
+    return widget.box.put(key, value);
+  }
+
+  late int counts = 0;
+  late Map<dynamic, dynamic> state_data;
+  final TextEditingController codeTextController = TextEditingController();
+  final TextEditingController usernameTextController = TextEditingController();
+  final TextEditingController phoneNumberTextController =
+      TextEditingController();
+  final TextEditingController tokenBotTextController = TextEditingController();
+  final TextEditingController fullnameTextController = TextEditingController();
+  final TextEditingController passwordTextController = TextEditingController();
+  final TextEditingController newpasswordTextController =
+      TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    setState(() {
+      tg = widget.tg;
+    });
+    counts = getValue("count", defaultValue: 0);
+    Map<String, dynamic> state_data_sign_default = {
+      "username": "",
+      "password": "",
+      "type_page": "signin",
+      "is_verified": "",
+      "secret_word": "",
+      "words": "",
+      "add_secret_word": []
+    };
+    try {
+      state_data =
+          getValue("state_data_sign", defaultValue: state_data_sign_default);
+    } catch (e) {
+      setValue("state_data_sign", state_data_sign_default);
+      state_data = state_data_sign_default;
+    }
+    usernameTextController.text = state_data["username"];
+    passwordTextController.text = state_data["password"];
+    tg.on("update", (UpdateTd update) {
+      try {
+        if (update.raw["@type"] is String) {
+          var type = update.raw["@type"];
+
+          if (type == "updateAuthorizationState") {
+            if (update.raw["authorization_state"] is Map) {
+              var authStateType = update.raw["authorization_state"]["@type"];
+              if (authStateType == "authorizationStateWaitPhoneNumber") {
+                setState(() {
+                  state_data["type_page"] = "signin";
+                  setValue("state_data_sign", state_data);
+                });
               }
-            } catch (e) {
-              print(e);
+              if (authStateType == "authorizationStateWaitCode") {
+                setState(() {
+                  state_data["type_page"] = "code";
+                  setValue("state_data_sign", state_data);
+                });
+              }
+              if (authStateType == "authorizationStateWaitPassword") {
+                setState(() {
+                  state_data["type_page"] = "password";
+                });
+              }
+              if (authStateType == "authorizationStateReady") {
+                setState(() {
+                  state_data["type_page"] = "main_menu";
+                  setValue("state_data_sign", state_data);
+                });
+              }
+
+              if (authStateType == "authorizationStateClosing") {}
+
+              if (authStateType == "authorizationStateClosed") {}
+
+              if (authStateType == "authorizationStateLoggingOut") {}
             }
           }
-        }
-        if (update.message.text != null) {
-          if (update.message.text!.isNotEmpty) {}
-          if (RegExp("^/ping", caseSensitive: false)
-              .hasMatch(update.message.text ?? "")) {
-            widget.tg.requestSendApi("sendMessage", {
-              "chat_id": update.message.chat.id,
-              "input_message_content": {
-                "@type": "inputMessageText",
-                "text": {
-                  "@type": "formattedText",
-                  "text": "pong",
-                  "entitiees": []
-                },
-                "disableWebPagePreview": false,
-                "clearDraft": false
+          if (type == "updateConnectionState") {
+            if (update.raw["state"]["@type"] == "connectionStateConnecting") {
+              if (is_no_connection = false) {
+                setState(() {
+                  is_no_connection = true;
+                });
               }
-            });
+            }
+            if (update.raw["state"]["@type"] == "connectionStateConnecting") {}
           }
-          if (update.message.text == "/jsondump") {
-            print(JSON.stringify(update.raw, null, 2));
-          }
-          if (update.message.text == "/stop") {
-            widget.tg.stop();
+          if (type == "error") {
+            if (update.raw["message"] == "Unauthorized") {}
           }
         }
+      } catch (e) {
+        debug(e);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    TelegramApi tg_api = TelegramApi(widget.tg);
+    bool is_potrait =
+        MediaQuery.of(context).orientation == Orientation.portrait;
+    debug(state_data["type_page"]);
     showPopUp(titleName, valueBody) {
       showDialog(
         context: context,
@@ -294,474 +231,134 @@ class _MyHomePageState extends State<MyHomePage> {
       );
     }
 
-    List<Widget> signUpWidget() {
-      return [
-        Image.network(
-          'https://ouch-cdn2.icons8.com/n9XQxiCMz0_zpnfg9oldMbtSsG7X6NwZi_kLccbLOKw/rs:fit:392:392/czM6Ly9pY29uczgu/b3VjaC1wcm9kLmFz/c2V0cy9zdmcvNDMv/MGE2N2YwYzMtMjQw/NC00MTFjLWE2MTct/ZDk5MTNiY2IzNGY0/LnN2Zw.png',
-          fit: BoxFit.cover,
-          width: 280,
-        ),
-        const SizedBox(
-          height: 50,
-        ),
-        Text(
-          'SIGN-UP',
-          style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 24,
-              color: Colors.grey.shade900),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 20),
-          child: Text(
-            (stateData["type"] == "phone")
-                ? "Enter phone number, and i will send your otp on telegram"
-                : (stateData["type"] == "code")
-                    ? "Enter your code"
-                    : "Enter your password",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-          ),
-        ),
-        const SizedBox(
-          height: 30,
-        ),
-        TextField(
-          cursorColor: Colors.black,
-          controller: (stateData["type"] == "phone")
-              ? phone_number
-              : (stateData["type"] == "code")
-                  ? code
-                  : password,
-          keyboardType: (stateData["type"] != "password")
-              ? TextInputType.number
-              : TextInputType.visiblePassword,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.all(0.0),
-            labelText: (stateData["type"] == "phone")
-                ? "Phone Number"
-                : (stateData["type"] == "code")
-                    ? "Code"
-                    : "Password",
-            hintText: (stateData["type"] == "phone")
-                ? "62xxxxxxx"
-                : (stateData["type"] == "code")
-                    ? "12345"
-                    : "abcdefghi",
-            labelStyle: const TextStyle(
-              color: Colors.black,
-              fontSize: 14.0,
-              fontWeight: FontWeight.w400,
+    showLoaderDialog() {
+      showDialog(
+        barrierDismissible: false,
+        context: context,
+        builder: (BuildContext context) {
+          return const Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Center(
+              child: CircularProgressIndicator(),
             ),
-            hintStyle: const TextStyle(
-              color: Colors.grey,
-              fontSize: 14.0,
-            ),
-            prefixIcon: Icon(
-              (stateData["type"] == "phone")
-                  ? CupertinoIcons.phone
-                  : (stateData["type"] == "code")
-                      ? CupertinoIcons.number
-                      : CupertinoIcons.lock,
-              color: Colors.black,
-              size: 18,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.grey.shade200, width: 2),
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            floatingLabelStyle: const TextStyle(
-              color: Colors.black,
-              fontSize: 18.0,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.black, width: 1.5),
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-          ),
-        ),
-        const SizedBox(
-          height: 100,
-        ),
-        MaterialButton(
-          minWidth: double.infinity,
-          onPressed: () async {
-            if (stateData["page"] != "signup") {
-              setState(() {
-                stateData["type"] = "password";
-                _isLoading = false;
-              });
-            }
-            if (!_isLoading) {
-              setState(() {
-                _isLoading = true;
-              });
-              if (stateData["type"] == "phone") {
-                if (phone_number.text.isEmpty) {
-                  setState(() {
-                    _isLoading = false;
-                  });
-                  return showPopUp("Failed", "Tolong isi phone number ya");
-                }
-                if (!RegExp("^[0-9]+\$", caseSensitive: false)
-                    .hasMatch(phone_number.text)) {
-                  setState(() {
-                    _isLoading = false;
-                  });
-                  return showPopUp(
-                      "Failed", "Tolong isi nomor ponsel dengan angka ya!");
-                }
-
-                widget.tg.requestSendApi("setAuthenticationPhoneNumber",
-                    {"phone_number": phone_number.text});
-                showPopUp("Succes",
-                    "Tolong check di telegram ya! $phone_number.text");
-                setState(() {
-                  _isLoading = false;
-                });
-              }
-              if (stateData["type"] == "code") {
-                if (code.text.isEmpty) {
-                  setState(() {
-                    _isLoading = false;
-                  });
-                  return showPopUp("Failed", "Tolong isi code ya");
-                }
-                if (!RegExp("^[0-9]+\$", caseSensitive: false)
-                    .hasMatch(code.text)) {
-                  setState(() {
-                    _isLoading = false;
-                  });
-                  return showPopUp(
-                      "Failed", "Tolong isi code dengan angka ya!");
-                }
-                if (code.text.length != 5) {
-                  setState(() {
-                    _isLoading = false;
-                  });
-                  return showPopUp(
-                      "Failed", "Tolong isi code panjang 5 karakter ya!");
-                }
-
-                widget.tg.requestSendApi(
-                    "checkAuthenticationCode", {"code": code.text});
-                setState(() {
-                  _isLoading = false;
-                });
-              }
-
-              if (stateData["type"] == "password") {
-                widget.tg.requestSendApi(
-                    "checkAuthenticationCode", {"code": password.text});
-                setState(() {
-                  _isLoading = false;
-                });
-              }
-            } else {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-          },
-          color: Colors.black,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-          child: _isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    backgroundColor: Colors.white,
-                    color: Colors.black,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Text(
-                  (stateData["type"] == "phone")
-                      ? "Request OTP"
-                      : (stateData["type"] == "code")
-                          ? "Send Code"
-                          : "Send Password",
-                  style: const TextStyle(color: Colors.white),
-                ),
-        ),
-        const SizedBox(
-          height: 20,
-        ),
-      ];
+          );
+        },
+      );
     }
 
-    List<Widget> signInWidget() {
-      try {
-        if (stateData["type"] == "chat") {
-          return [
-            Flexible(
-              child: MediaQuery.removePadding(
-                context: context,
-                removeTop: true,
-                child: ListView.builder(
-                  controller: scrollController,
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  reverse: messages.isEmpty ? false : true,
-                  itemCount: messages.length,
-                  shrinkWrap: false,
-                  itemBuilder: (BuildContext context, int index) {
-                    var msg = messages[index];
-                    Widget messageData = InkWell(
-                      onTap: () {
-                        showPopUp("msg", JSON.stringify(msg, null, 2));
-                      },
-                      onLongPress: () {
-                        print("lama");
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          right: 3,
-                          bottom: 3,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: messages.isEmpty
-                              ? MainAxisAlignment.center
-                              : MainAxisAlignment.start,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: msg["is_outgoing"]
-                                        ? MainAxisAlignment.end
-                                        : MainAxisAlignment.start,
-                                    crossAxisAlignment: msg["is_outgoing"]
-                                        ? CrossAxisAlignment.end
-                                        : CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(5.0),
-                                        constraints: BoxConstraints(
-                                          maxWidth: MediaQuery.of(context)
-                                                  .size
-                                                  .width *
-                                              .5,
-                                          maxHeight: double.infinity,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: msg["is_outgoing"]
-                                              ? const Color(0xFFE3D8FF)
-                                              : const Color(0xFFFFFFFF),
-                                          borderRadius: msg["is_outgoing"]
-                                              ? BorderRadius.only(
-                                                  topRight: Radius.circular(
-                                                      (messages.length ==
-                                                              (index + 1))
-                                                          ? 0
-                                                          : 11),
-                                                  topLeft:
-                                                      const Radius.circular(11),
-                                                  bottomRight: Radius.circular(
-                                                      (index == 0) ? 0 : 11),
-                                                  bottomLeft:
-                                                      const Radius.circular(11),
-                                                )
-                                              : BorderRadius.only(
-                                                  topRight:
-                                                      const Radius.circular(11),
-                                                  topLeft: Radius.circular(
-                                                      (messages.length ==
-                                                              (index + 1))
-                                                          ? 0
-                                                          : 11),
-                                                  bottomRight:
-                                                      const Radius.circular(11),
-                                                  bottomLeft: Radius.circular(
-                                                      (index == 0) ? 0 : 11),
-                                                ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            (msg["chat"] != null &&
-                                                    msg["chat"]["type"] !=
-                                                        "private")
-                                                ? Align(
-                                                    alignment:
-                                                        Alignment.topLeft,
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                        bottom: 7,
-                                                      ),
-                                                      child: Text(
-                                                        msg["from"][
-                                                                "first_name"] ??
-                                                            msg["from"]
-                                                                ["title"] ??
-                                                            "",
-                                                        textAlign:
-                                                            TextAlign.end,
-                                                        style: const TextStyle(
-                                                          color:
-                                                              Color(0xFF594097),
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  )
-                                                : const SizedBox(
-                                                    height: 7,
-                                                  ),
-                                            Text(
-                                              msg["text"] ??
-                                                  "Unsupported Message Please Update App",
-                                              textAlign: TextAlign.start,
-                                              softWrap: true,
-                                              style: const TextStyle(
-                                                color: Color(0xFF2E1963),
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                            Align(
-                                              alignment: Alignment.centerRight,
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 7,
-                                                ),
-                                                child: Text(
-                                                  msg["date"].toString(),
-                                                  textAlign: TextAlign.end,
-                                                  style: const TextStyle(
-                                                    color: Color(0xFF594097),
-                                                    fontSize: 9,
-                                                  ),
-                                                ),
-                                              ),
-                                            )
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                    return (msg["chat"]["type"] == "private" ||
-                            msg["chat"]["type"] == "channel")
-                        ? messageData
-                        : Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                    top: 10, left: 10, bottom: 10),
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      width: 35,
-                                      height: 35,
-                                      padding: const EdgeInsets.all(8.0),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          width: 1,
-                                          color: Colors.blue,
-                                        ),
-                                        image: const DecorationImage(
-                                          fit: BoxFit.fill,
-                                          image: NetworkImage(
-                                              "https://picsum.photos/500/300?random=1"),
-                                        ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      bottom: 0,
-                                      right: 0,
-                                      child: Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 2,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  ],
-                                ),
-                              ),
-                              Flexible(child: messageData),
-                            ],
-                          );
-                  },
-                ),
+    return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 235, 234, 255),
+      body: LayoutBuilder(builder: (BuildContext ctx, constraints) {
+        Widget type_sign_page = Center(
+          child: TextButton(
+            onPressed: () {
+              setState(() {
+                usernameTextController.clear();
+                passwordTextController.clear();
+                state_data["type_page"] = "signin";
+                setValue("state_data_sign", state_data);
+              });
+            },
+            child: const Text(
+              'Reset',
+              style: TextStyle(
+                color: Colors.blue,
+                fontSize: 14.0,
+                fontWeight: FontWeight.w400,
               ),
             ),
+          ),
+        );
+        List<Widget> usernameField() {
+          return [
             Padding(
-              padding: const EdgeInsets.only(right: 10, left: 10, bottom: 10),
+              padding: const EdgeInsets.all(20),
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
                   color: Colors.white,
-                  borderRadius: BorderRadius.all(Radius.circular(10)),
-                  boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 2)],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(1),
+                      spreadRadius: 1,
+                      blurRadius: 7,
+                      offset: const Offset(0, 3), // changes position of shadow
+                    ),
+                  ],
                 ),
-                child: TextField(
-                  minLines: 1,
-                  maxLines: 5,
-                  controller: messageController,
-                  textCapitalization: TextCapitalization.sentences,
+                padding: const EdgeInsets.all(15),
+                child: TextFormField(
+                  cursorColor: Colors.black,
+                  controller: usernameTextController,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  validator: (String? text) {
+                    if (text == null || text.isEmpty) {
+                      return 'Can\'t be empty';
+                    }
+
+                    if (!RegExp(r"^[a-z]+$", caseSensitive: false)
+                        .hasMatch(text)) {
+                      return "Tolong isi username dengan benar ya! contoh: azka";
+                    }
+                    print(text);
+                    return null;
+                  },
                   decoration: InputDecoration(
-                    hintText: "Type a message",
+                    contentPadding: const EdgeInsets.all(0.0),
+                    hintText: 'username',
+                    labelText: "Username",
+                    labelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w400,
+                    ),
                     hintStyle: const TextStyle(
                       color: Colors.grey,
+                      fontSize: 14.0,
                     ),
-                    border: InputBorder.none,
-                    prefixIcon: Padding(
-                      padding: const EdgeInsets.all(2.5),
-                      child: InkWell(
-                        child: const Icon(
-                          CupertinoIcons.hand_draw,
-                          color: Colors.pink,
-                          size: 25,
-                        ),
-                        onTap: () {},
-                      ),
+                    prefixIcon: const Icon(
+                      Iconsax.profile_2user,
+                      color: Colors.black,
+                      size: 18,
                     ),
-                    suffixIcon: Padding(
-                      padding: const EdgeInsets.all(5.0),
-                      child: InkWell(
-                        child: const Icon(
-                          CupertinoIcons.arrow_right_square_fill,
-                          color: Colors.blue,
-                          size: 25,
-                        ),
-                        onTap: () async {
-                          try {
-                            await widget.tg.requestSendApi(
-                                "sendMessage",
-                                widget.tg.makeParametersApi({
-                                  "@type": "sendMessage",
-                                  "chat_id": stateData["state"]["id"],
-                                  "text": "hello"
-                                }));
-                          } catch (e) {}
-                        },
+                    disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
                       ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    floatingLabelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 18.0,
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
                     ),
                   ),
                 ),
@@ -770,561 +367,2111 @@ class _MyHomePageState extends State<MyHomePage> {
           ];
         }
 
-        return [
-          SizedBox(height: MediaQuery.of(context).padding.top),
-          ListView.builder(
-              primary: false,
-              shrinkWrap: true,
-              itemCount: chats.length,
-              itemBuilder: (BuildContext ctx, int index) {
-                try {
-                  return SafeArea(
-                    minimum: const EdgeInsets.only(right: 10.0, left: 10.0),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Ink(
-                        width: MediaQuery.of(context).size.width,
-                        height: 70,
-                        decoration: BoxDecoration(
-                          color: const Color(0xffF0F8FF),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: SafeArea(
-                          minimum: const EdgeInsets.all(10.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Stack(
-                                children: [
-                                  Container(
-                                    width: 50,
-                                    height: 50,
-                                    padding: const EdgeInsets.all(8.0),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                          width: 1, color: Colors.blue),
-                                      image: const DecorationImage(
-                                        fit: BoxFit.fill,
-                                        image: NetworkImage(
-                                            "https://picsum.photos/500/300?random=1"),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Container(
-                                      width: 15,
-                                      height: 15,
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 3,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                ],
-                              ),
-                              const SizedBox(width: 15),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      chats[index]["first_name"] ??
-                                          chats[index]["title"] ??
-                                          "",
-                                      style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
-                                    Text(
-                                      (chats[index]["last_message"] != null)
-                                          ? (chats[index]["last_message"]
-                                                      ["text"] !=
-                                                  null)
-                                              ? (chats[index]["last_message"]
-                                                              ["text"]
-                                                          .toString()
-                                                          .length >
-                                                      10)
-                                                  ? chats[index]["last_message"]
-                                                          ["text"]
-                                                      .toString()
-                                                      .substring(1, 10)
-                                                  : chats[index]["last_message"]
-                                                      ["text"]
-                                              : "Unsupported message please update"
-                                          : "",
-                                      style: const TextStyle(
-                                        color: Colors.blueGrey,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      (chats[index]["last_message"] != null)
-                                          ? chats[index]["last_message"]["date"]
-                                              .toString()
-                                          : "",
-                                      style: const TextStyle(
-                                        color: Colors.blueGrey,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
-                                    Container(
-                                      constraints: const BoxConstraints(
-                                        maxHeight: double.infinity,
-                                        maxWidth: double.infinity,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: (chats[index]["detail"]
-                                                        ["unread_count"] !=
-                                                    null &&
-                                                chats[index]["detail"]
-                                                        ["unread_count"] !=
-                                                    0)
-                                            ? const Color.fromARGB(
-                                                209, 31, 139, 255)
-                                            : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(10),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: (chats[index]["detail"]
-                                                            ["unread_count"] !=
-                                                        null &&
-                                                    chats[index]["detail"]
-                                                            ["unread_count"] !=
-                                                        0)
-                                                ? Colors.black12
-                                                : Colors.transparent,
-                                            spreadRadius: 0,
-                                            blurRadius: 1,
-                                          ),
-                                        ],
-                                      ),
-                                      child: SafeArea(
-                                        minimum: const EdgeInsets.all(4.0),
-                                        child: Text(
-                                          (chats[index]["detail"]
-                                                          ["unread_count"] !=
-                                                      null &&
-                                                  chats[index]["detail"]
-                                                          ["unread_count"] !=
-                                                      0)
-                                              ? chats[index]["detail"]
-                                                      ["unread_count"]
-                                                  .toString()
-                                              : "",
-                                          style: TextStyle(
-                                            color: (chats[index]["detail"]
-                                                            ["unread_count"] !=
-                                                        null &&
-                                                    chats[index]["detail"]
-                                                            ["unread_count"] !=
-                                                        0)
-                                                ? Colors.white
-                                                : Colors.transparent,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      onTap: () async {
-                        setState(() {
-                          is_load_chat = true;
-                        });
-
-                        var getchat = await tg_api.getChatHistory(
-                          chats[index]["id"],
-                        );
-                        setState(() {
-                          messages = getchat["result"]["messages"];
-                          stateData["type"] = "chat";
-                          stateData["state"] = chats[index];
-                          is_load_chat = false;
-                        });
-                      },
+        List<Widget> phoneNumberField() {
+          return [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(1),
+                      spreadRadius: 1,
+                      blurRadius: 7,
+                      offset: const Offset(0, 3), // changes position of shadow
                     ),
-                  );
-                } catch (e) {
-                  print("Error $index");
-                  print(chats[index]);
-                  print(e);
-                  return Container();
-                }
-              })
-        ];
-      } catch (e) {
-        return [Text(JSON.stringify(e, null, 2))];
-      }
-    }
+                  ],
+                ),
+                padding: const EdgeInsets.all(15),
+                child: TextFormField(
+                  cursorColor: Colors.black,
+                  controller: phoneNumberTextController,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  validator: (String? text) {
+                    if (text == null || text.isEmpty) {
+                      return 'Can\'t be empty';
+                    }
 
-    return Scaffold(
-      appBar: (stateData["type"] == "chat")
-          ? PreferredSize(
-              preferredSize: const Size.fromHeight(50),
-              child: SafeArea(
-                minimum: const EdgeInsets.all(10.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    InkWell(
-                      child: const Icon(
-                        CupertinoIcons.arrow_left,
+                    if (!RegExp(r"^[0-9]+$", caseSensitive: false)
+                        .hasMatch(text)) {
+                      return "Tolong isi dengan angka ya!";
+                    }
+                    if (text.length < 5) {
+                      return "Tolong isi dengan benar ya!";
+                    }
+                    print(text);
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(0.0),
+                    hintText: '62xxxxxxxxx',
+                    labelText: "Phone Number",
+                    labelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14.0,
+                    ),
+                    prefixIcon: const Icon(
+                      Iconsax.card,
+                      color: Colors.black,
+                      size: 18,
+                    ),
+                    disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    floatingLabelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 18.0,
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ];
+        }
+
+        List<Widget> tokenBotField() {
+          return [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(1),
+                      spreadRadius: 1,
+                      blurRadius: 7,
+                      offset: const Offset(0, 3), // changes position of shadow
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(15),
+                child: TextFormField(
+                  cursorColor: Colors.black,
+                  controller: tokenBotTextController,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  validator: (String? text) {
+                    if (text == null || text.isEmpty) {
+                      return 'Can\'t be empty';
+                    }
+
+                    if (!RegExp(r"^[0-9]:.*$", caseSensitive: false)
+                        .hasMatch(text)) {
+                      return "Tolong isi dengan benar ya";
+                    }
+                    print(text);
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(0.0),
+                    hintText: '1234567890:abbcdefghijklmnopqrstuvwxyz',
+                    labelText: "Token Bot",
+                    labelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14.0,
+                    ),
+                    prefixIcon: const Icon(
+                      Iconsax.card,
+                      color: Colors.black,
+                      size: 18,
+                    ),
+                    disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    floatingLabelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 18.0,
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ];
+        }
+
+        List<Widget> codeField() {
+          return [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(1),
+                      spreadRadius: 1,
+                      blurRadius: 7,
+                      offset: const Offset(0, 3), // changes position of shadow
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(15),
+                child: TextFormField(
+                  cursorColor: Colors.black,
+                  controller: codeTextController,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  validator: (String? text) {
+                    if (text == null || text.isEmpty) {
+                      return 'Can\'t be empty';
+                    }
+
+                    if (!RegExp(r"^[0-9]+$", caseSensitive: false)
+                        .hasMatch(text)) {
+                      return "Tolong isi dengan benar ya";
+                    }
+                    if (text.length != 5) {
+                      return "Panjang code harus 5";
+                    }
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(0.0),
+                    hintText: '12345',
+                    labelText: "Code",
+                    labelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14.0,
+                    ),
+                    prefixIcon: const Icon(
+                      Iconsax.card,
+                      color: Colors.black,
+                      size: 18,
+                    ),
+                    disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    floatingLabelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 18.0,
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ];
+        }
+
+        List<Widget> passwordField() {
+          return [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(1),
+                      spreadRadius: 1,
+                      blurRadius: 7,
+                      offset: const Offset(0, 3), // changes position of shadow
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(15),
+                child: TextFormField(
+                  cursorColor: Colors.black,
+                  controller: passwordTextController,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  validator: (String? text) {
+                    if (text == null || text.isEmpty) {
+                      return 'Can\'t be empty';
+                    }
+                    if (text == "email") {
+                      return 'Please enter a valid email';
+                    }
+                    print(text);
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(0.0),
+                    hintText: 'password1234',
+                    labelText: "Password",
+                    labelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14.0,
+                    ),
+                    prefixIcon: const Icon(
+                      Iconsax.key,
+                      color: Colors.black,
+                      size: 18,
+                    ),
+                    disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    floatingLabelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 18.0,
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ];
+        }
+
+        List<Widget> newpasswordField() {
+          return [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(1),
+                      spreadRadius: 1,
+                      blurRadius: 7,
+                      offset: const Offset(0, 3), // changes position of shadow
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(15),
+                child: TextFormField(
+                  cursorColor: Colors.black,
+                  controller: newpasswordTextController,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  validator: (String? text) {
+                    if (text == null || text.isEmpty) {
+                      return 'Can\'t be empty';
+                    }
+                    if (text == "email") {
+                      return 'Please enter a valid email';
+                    }
+                    print(text);
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(0.0),
+                    hintText: 'newpassword123',
+                    labelText: "New Password",
+                    labelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14.0,
+                    ),
+                    prefixIcon: const Icon(
+                      Iconsax.key,
+                      color: Colors.black,
+                      size: 18,
+                    ),
+                    disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    floatingLabelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 18.0,
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(
                         color: Colors.black,
-                        size: 30,
+                        width: 1.5,
                       ),
-                      onTap: () async {
-                        setState(() {
-                          stateData["type"] = "main";
-                          is_load_chat = true;
-                        });
-                        print("azka");
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(
+                        color: Colors.black,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(
+                        color: Colors.black,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ];
+        }
 
-                        try {
-                          var getChat = await tg_api.getChats(is_detail: true);
-                          setState(() {
-                            stateData["state"] = {};
-                            stateData["type"] = "main";
-                            is_load_chat = false;
-                            chats = getChat["result"];
-                          });
-                        } catch (e) {
-                          print("error");
-                          print(e);
-                        }
-                      },
+        List<Widget> fullNameField() {
+          return [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(1),
+                      spreadRadius: 1,
+                      blurRadius: 7,
+                      offset: const Offset(0, 3), // changes position of shadow
                     ),
-                    const SizedBox(
-                      width: 10.0,
+                  ],
+                ),
+                padding: const EdgeInsets.all(15),
+                child: TextFormField(
+                  cursorColor: Colors.black,
+                  controller: fullnameTextController,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  validator: (String? text) {
+                    if (text == null || text.isEmpty) {
+                      return 'Can\'t be empty';
+                    }
+                    if (text == "email") {
+                      return 'Please enter a valid email';
+                    }
+                    print(text);
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(0.0),
+                    hintText: 'fullname',
+                    labelText: "Full Name",
+                    labelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w400,
                     ),
-                    Stack(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          padding: const EdgeInsets.all(8.0),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(width: 1, color: Colors.blue),
-                            image: const DecorationImage(
-                              fit: BoxFit.fill,
-                              image: NetworkImage(
-                                  "https://picsum.photos/500/300?random=1"),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            width: 15,
-                            height: 15,
-                            decoration: BoxDecoration(
-                              color: Colors.orange,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 3,
-                              ),
-                            ),
-                          ),
-                        )
-                      ],
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14.0,
                     ),
-                    const SizedBox(
-                      width: 10.0,
+                    prefixIcon: const Icon(
+                      Iconsax.personalcard,
+                      color: Colors.black,
+                      size: 18,
                     ),
-                    Text(
-                      stateData["state"]["first_name"] ??
-                          stateData["state"]["title"] ??
-                          "",
-                      style: const TextStyle(
-                        color: Colors.blueGrey,
+                    disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    floatingLabelStyle: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 18.0,
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(
+                        color: Colors.black,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(
+                        color: Colors.black,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(
+                        color: Colors.black,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ];
+        }
+
+        List<Widget> titlePage(String title, String description) {
+          return [
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ];
+        }
+
+        if (state_data["type_page"] == "signin") {
+          type_sign_page = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Visibility(
+                visible: is_no_connection,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              ...titlePage(
+                  "Your Phone Number", "Please typing your phone number"),
+              const SizedBox(
+                height: 20,
+              ),
+              ...phoneNumberField(),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: MaterialButton(
+                  onPressed: () async {
+                    try {
+                      var res =
+                          await tg.request("setAuthenticationPhoneNumber", {
+                        "phone_number": phoneNumberTextController.text,
+                      });
+                      debug(res);
+                    } catch (e) {
+                      debug(e);
+                    }
+                  },
+                  color: Colors.blue,
+                  height: 50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  padding: const EdgeInsets.only(
+                    left: 25,
+                    right: 25,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Send Code",
+                      style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
-                    const Spacer(),
-                    InkWell(
-                      child: const Icon(
-                        CupertinoIcons.phone,
-                        color: Colors.black,
-                        size: 30,
-                      ),
-                      onTap: () async {
+                  ),
+                ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
                         setState(() {
-                          stateData["type"] = "main";
-                          is_load_chat = true;
+                          usernameTextController.clear();
+                          passwordTextController.clear();
+                          state_data["type_page"] = "signup";
+                          setValue("state_data_sign", state_data);
                         });
-                        print("azka");
-
-                        try {
-                          var getChat = await tg_api.getChats(is_detail: true);
-                          setState(() {
-                            stateData["state"] = {};
-                            stateData["type"] = "main";
-                            is_load_chat = false;
-                            chats = getChat["result"];
-                          });
-                        } catch (e) {
-                          print("error");
-                          print(e);
-                        }
                       },
+                      child: const Text(
+                        'Sign Qr',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
                     ),
-                    InkWell(
-                      child: const Icon(
-                        CupertinoIcons.ellipsis_vertical,
-                        color: Colors.black,
-                        size: 30,
-                      ),
-                      onTap: () async {
+                    TextButton(
+                      onPressed: () {
                         setState(() {
-                          stateData["type"] = "main";
-                          is_load_chat = true;
+                          usernameTextController.clear();
+                          passwordTextController.clear();
+                          state_data["type_page"] = "signin_token_bot";
+                          setValue("state_data_sign", state_data);
                         });
-                        print("azka");
-
-                        try {
-                          var getChat = await tg_api.getChats(is_detail: true);
-                          setState(() {
-                            stateData["state"] = {};
-                            stateData["type"] = "main";
-                            is_load_chat = false;
-                            chats = getChat["result"];
-                          });
-                        } catch (e) {
-                          print("error");
-                          print(e);
-                        }
                       },
+                      child: const Text(
+                        'SignIn Bot',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          );
+        } else if (state_data["type_page"] == "signup") {
+          type_sign_page = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Visibility(
+                visible: is_no_connection,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              ...titlePage(
+                  "Your Phone Number", "Please typing your phone number"),
+              const SizedBox(
+                height: 20,
+              ),
+              ...phoneNumberField(),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: MaterialButton(
+                  onPressed: () async {},
+                  color: Colors.blue,
+                  height: 50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  padding: const EdgeInsets.only(
+                    left: 25,
+                    right: 25,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Send Code",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          usernameTextController.clear();
+                          passwordTextController.clear();
+                          state_data["type_page"] = "signup";
+                          setValue("state_data_sign", state_data);
+                        });
+                      },
+                      child: const Text(
+                        'Sign Qr',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          usernameTextController.clear();
+                          passwordTextController.clear();
+                          state_data["type_page"] = "signin_token_bot";
+                          setValue("state_data_sign", state_data);
+                        });
+                      },
+                      child: const Text(
+                        'SignIn Bot',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          );
+        } else if (state_data["type_page"] == "code") {
+          type_sign_page = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Visibility(
+                visible: is_no_connection,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              ...titlePage("Your Account Code",
+                  "Tolong kirim kode telegram dari Nomor: ${phoneNumberTextController.text}"),
+              const SizedBox(
+                height: 20,
+              ),
+              ...codeField(),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: MaterialButton(
+                  onPressed: () async {
+                    try {
+                      var res = await tg.request("checkAuthenticationCode", {
+                        "code": codeTextController.text,
+                      });
+                      var get_me = await tg.getMe();
+                      List getUsers = getValue("users", defaultValue: []);
+                      for (var i = 0; i < getUsers.length; i++) {
+                        var loop_data = getUsers[i];
+                        if (loop_data is Map &&
+                            loop_data["id"] == get_me["result"]["id"]) {
+                          getUsers[i]["is_sign"] = true;
+                          setValue("users", getUsers);
+                          Navigator.pushAndRemoveUntil(context,
+                              MaterialPageRoute(
+                                  builder: (BuildContext context) {
+                            return MainPage(
+                                box: widget.box,
+                                get_me: get_me["result"],
+                                tg: tg);
+                          }), ModalRoute.withName('/'));
+                          return;
+                        }
+                      }
+                      get_me["result"]["is_sign"] = true;
+                      getUsers.add(get_me["result"]);
+                      setValue("users", getUsers);
+                      Navigator.pushAndRemoveUntil(context,
+                          MaterialPageRoute(builder: (BuildContext context) {
+                        return MainPage(
+                            box: widget.box, get_me: get_me["result"], tg: tg);
+                      }), ModalRoute.withName('/'));
+                      return;
+                    } catch (e) {
+                      debug(e);
+                    }
+                  },
+                  color: Colors.blue,
+                  height: 50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  padding: const EdgeInsets.only(
+                    left: 25,
+                    right: 25,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Check Code",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          usernameTextController.clear();
+                          passwordTextController.clear();
+                          state_data["type_page"] = "signup";
+                          setValue("state_data_sign", state_data);
+                        });
+                      },
+                      child: const Text(
+                        'Sign Qr',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          usernameTextController.clear();
+                          passwordTextController.clear();
+                          state_data["type_page"] = "signin_token_bot";
+                          setValue("state_data_sign", state_data);
+                        });
+                      },
+                      child: const Text(
+                        'SignIn Bot',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          );
+        } else if (state_data["type_page"] == "password") {
+          type_sign_page = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Visibility(
+                visible: is_no_connection,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              ...titlePage("Your Account Password",
+                  "Tolong isi password telegram dari Nomor: ${phoneNumberTextController.text}"),
+              const SizedBox(
+                height: 20,
+              ),
+              ...passwordField(),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: MaterialButton(
+                  onPressed: () async {},
+                  color: Colors.blue,
+                  height: 50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  padding: const EdgeInsets.only(
+                    left: 25,
+                    right: 25,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Check Password",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          usernameTextController.clear();
+                          passwordTextController.clear();
+                          state_data["type_page"] = "signup";
+                          setValue("state_data_sign", state_data);
+                        });
+                      },
+                      child: const Text(
+                        'Sign Qr',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          usernameTextController.clear();
+                          passwordTextController.clear();
+                          state_data["type_page"] = "signin_token_bot";
+                          setValue("state_data_sign", state_data);
+                        });
+                      },
+                      child: const Text(
+                        'SignIn Bot',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          );
+        } else if (state_data["type_page"] == "signin_token_bot") {
+          type_sign_page = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Visibility(
+                visible: is_no_connection,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              ...titlePage("Your Token Bot",
+                  "Please confirm your token bot from @botfather"),
+              const SizedBox(
+                height: 20,
+              ),
+              ...tokenBotField(),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: MaterialButton(
+                  onPressed: () async {},
+                  color: Colors.blue,
+                  height: 50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  padding: const EdgeInsets.only(
+                    left: 25,
+                    right: 25,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Login",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          usernameTextController.clear();
+                          passwordTextController.clear();
+                          state_data["type_page"] = "signqr";
+                          setValue("state_data_sign", state_data);
+                        });
+                      },
+                      child: const Text(
+                        'Sign Qr',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          usernameTextController.clear();
+                          passwordTextController.clear();
+                          state_data["type_page"] = "signin";
+                          setValue("state_data_sign", state_data);
+                        });
+                      },
+                      child: const Text(
+                        'SignIn User',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          );
+        }
+
+        if (is_potrait) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics()),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                  minWidth: constraints.maxHeight,
+                  minHeight: constraints.maxHeight),
+              child: type_sign_page,
+            ),
+          );
+        } else {
+          return ConstrainedBox(
+            constraints: BoxConstraints(
+                minWidth: constraints.maxHeight,
+                minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 25),
+              child: Container(
+                height: constraints.maxHeight / 2,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(1),
+                      spreadRadius: 1,
+                      blurRadius: 7,
+                      offset: const Offset(0, 3), // changes position of shadow
+                    ),
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Center(
+                        child: Image.asset(
+                          "assets/icons/app.png",
+                          scale: 5,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics()),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                              minWidth: constraints.maxHeight,
+                              minHeight: constraints.maxHeight),
+                          child: type_sign_page,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-            )
-          : null,
-      body: (stateData["type"] == "chat")
-          ? (is_load_chat)
-              ? ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: MediaQuery.of(context).size.height,
-                    minWidth: MediaQuery.of(context).size.width,
+            ),
+          );
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics()),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                        minWidth: constraints.maxHeight,
+                        minHeight: constraints.maxHeight),
+                    child: type_sign_page,
                   ),
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              : Container(
-                  decoration: const BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage("assets/images/bg_chat.jpg"),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: signInWidget(),
-                  ),
-                )
-          : SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics()),
-              child: LayoutBuilder(
-                builder: (contex, constraints) {
-                  if (stateData["page"] == "signin") {
-                    if (is_load_chat) {
-                      return ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: MediaQuery.of(context).size.height,
-                          minWidth: MediaQuery.of(context).size.width,
-                        ),
-                        child: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
-                    }
-                    return Column(
-                      children: signInWidget(),
-                    );
-                  }
-                  if (stateData["page"] == "signup") {
-                    return Container(
-                      padding: const EdgeInsets.all(30),
-                      width: double.infinity,
-                      height: MediaQuery.of(context).size.height,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: signUpWidget(),
-                      ),
-                    );
-                  }
-                  return Container(
-                    padding: const EdgeInsets.all(30),
-                    width: double.infinity,
-                    height: MediaQuery.of(context).size.height,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: signUpWidget(),
-                    ),
-                  );
-                },
+                ),
               ),
-            ),
-      floatingActionButton: (stateData["type"] == "chat")
-          ? null
-          : FloatingActionButton(
-              onPressed: () async {
-              
-                return showPopUp("result", json.encode(chats));
-                setState(() {
-                  is_load_chat = true;
-                });
-                print("azka");
-
-                try {
-                  var getChat = await tg_api.getChats(is_detail: true);
-                  setState(() {
-                    stateData["type"] = "main";
-                    is_load_chat = false;
-                    chats = getChat["result"];
-                  });
-
-                  showPopUp(
-                      "result", JSON.stringify(getChat["result"], null, 2));
-                } catch (e) {
-                  print("error");
-                  print(e);
-                }
-              },
-            ),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics()),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                        minWidth: constraints.maxHeight,
+                        minHeight: constraints.maxHeight),
+                    child: type_sign_page,
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+      }),
     );
   }
 }
 
-class TelegramApi {
-  late Tdlib tg_client;
-  TelegramApi(this.tg_client);
+class MainPage extends StatefulWidget {
+  final Tdlib tg;
+  const MainPage(
+      {Key? key, required this.box, required this.get_me, required this.tg})
+      : super(key: key);
+  final Box box;
+  final Map get_me;
+  @override
+  State<MainPage> createState() => _MainPageState();
+}
 
-  getChats({bool is_detail = false}) async {
+class _MainPageState extends State<MainPage> {
+  late Tdlib tg;
+  late String status_tdlib = "helo";
+  late bool is_no_connection = false;
+
+  late Map get_me_data = {
+    "state": "succes",
+    "sign": true,
+    "token": "",
+    "id": "",
+    "username": "",
+    "first_name": "",
+    "last_name": "",
+    "password": "",
+    "is_verified": true,
+    "secret_word": "",
+    "random_secret_word": ""
+  };
+  getValue(key, defaultvalue) {
     try {
-      var getChatres =
-          await tg_client.requestSendApi("getChats", {"limit": 999999});
-      List array = [];
-      for (var i = 0; i < getChatres["chat_ids"].length; i++) {
-        var loop_data = getChatres["chat_ids"][i];
-        print(i);
-        try {
-          var getChatres =
-              await tg_client.getChat(loop_data, is_detail: is_detail);
-          if (getChatres["ok"]) {
-            array.add(getChatres["result"]);
-          }
-        } catch (e) {}
-      }
-      return {"ok": true, "result": array};
+      return widget.box.get(key, defaultValue: defaultvalue);
     } catch (e) {
-      return {"ok": false, "result": e};
+      return defaultvalue;
     }
   }
 
-  getChatHistory(chat_id) async {
-    try {
-      var getchat = await tg_client.getChat(chat_id);
-      if (getchat["ok"]) {
-        if (getchat["type"] != "private" && getchat["type"] != "channel") {
-          try {
-            await tg_client.requestSendApi("getSupergroupMembers", {
-              "supergroup_id": int.parse(chat_id
-                  .toString()
-                  .replaceAll(RegExp("^-100", caseSensitive: false), "")),
-              "limit": 200
-            });
-          } catch (e) {}
-        }
+  setValue(key, value) {
+    return widget.box.put(key, value);
+  }
 
-        var getchathistory = await tg_client.requestSendApi("getChatHistory", {
-          "chat_id": chat_id,
-          "from_chat_id": getchat["result"]["detail"]
-              ["last_read_inbox_message_id"],
-          "offset": 0,
-          "limit": 100
-        });
-        if (getchathistory["@type"] == "messages") {
-          List array = [];
-          for (var i = 0; i < getchathistory["messages"].length; i++) {
-            var loop_data = getchathistory["messages"][i];
-            var result = await tg_client.jsonMessage(loop_data);
-            if (result["ok"]) {
-              array.add(result["result"]);
+  @override
+  void initState() {
+    super.initState();
+    setState(() {
+      tg = widget.tg;
+    });
+
+    tg.on("update", (UpdateTd update) async {
+      try {
+        if (!update.raw.containsKey("@extra")) {}
+        if (update.raw["@type"] is String) {
+          var type = update.raw["@type"];
+
+          if (type == "updateAuthorizationState") {
+            print("hello world");
+            if (update.raw["authorization_state"] is Map) {
+              var authStateType = update.raw["authorization_state"]["@type"];
+              if (authStateType == "authorizationStateWaitPhoneNumber") {}
+              if (authStateType == "authorizationStateWaitCode") {}
+              if (authStateType == "authorizationStateWaitPassword") {}
+              if (authStateType == "authorizationStateReady") {
+                bool is_bot = false;
+                if (widget.get_me["is_bot"] is bool) {
+                  is_bot = widget.get_me["is_bot"];
+                }
+                if (!is_bot) {
+                  tg.debugRequest("getChats", callback: (res) {
+                    if (res["ok"]) {
+                      var result = res["result"] as List;
+                      setValue("chats", result);
+                    }
+                  });
+                }
+                print(is_bot);
+              }
+
+              if (authStateType == "authorizationStateClosing") {}
+
+              if (authStateType == "authorizationStateClosed") {}
+
+              if (authStateType == "authorizationStateLoggingOut") {}
             }
           }
-          return {
-            "ok": true,
-            "result": {
-              "total_count": getchathistory["messages"].length,
-              "messages": array,
-            },
-          };
+
+          if (type == "updateConnectionState") {
+            print(update.raw);
+            if (update.raw["state"]["@type"] == "connectionStateConnecting") {
+              setState(() {
+                is_no_connection = true;
+              });
+            }
+          }
+
+          var update_api = await update.raw_api;
+          if (update_api["update_channel_post"] is Map) {
+            var msg = update_api["update_channel_post"];
+            var chat_id = msg["chat"]["id"];
+            var text = msg["text"];
+            var is_outgoing = false;
+            if (msg["is_outgoing"] is bool && msg["is_outgoing"]) {
+              is_outgoing = msg["is_outgoing"];
+            }
+            if (text is String && text.isNotEmpty) {
+              print(text);
+              if (RegExp("/ping", caseSensitive: false).hasMatch(text)) {
+                return await tg.request(
+                    "sendMessage", {"chat_id": chat_id, "text": "pong"});
+              }
+            }
+          }
+          if (update_api["update_message"] is Map) {
+            var msg = update_api["update_message"];
+            var text = msg["text"];
+            var caption = msg["caption"];
+            var msg_id = msg["message_id"];
+            var user_id = msg["from"]["id"];
+            var chat_id = msg["chat"]["id"];
+            var from_id = msg["from"]["id"];
+            var is_outgoing = false;
+            if (msg["is_outgoing"] is bool && msg["is_outgoing"]) {
+              is_outgoing = msg["is_outgoing"];
+            }
+            if (text is String && text.isNotEmpty) {
+              print(text);
+              if (RegExp("/ping", caseSensitive: false).hasMatch(text)) {
+                return await tg.request(
+                    "sendMessage", {"chat_id": chat_id, "text": "pong"});
+              }
+            }
+          }
         }
+      } catch (e) {
+        debug(e);
       }
-      return {"ok": false};
-    } catch (e) {
-      return {"ok": false};
+    });
+  }
+
+  showPopUp([titleName, valueBody]) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(50),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            primary: false,
+            body: Builder(builder: (BuildContext context) {
+              debug(getValue("count", 1));
+              return Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
+                decoration: BoxDecoration(
+                  color: const Color(0xffF0F8FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var i = 0; i < 100; i++) ...[
+                        const SizedBox(
+                          width: 50,
+                          height: 50,
+                          child: Text("Hello world"),
+                        ),
+                      ]
+                    ],
+                  ),
+                ),
+              );
+            }),
+            floatingActionButton: FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  setValue("count", getValue("count", 0) + 1);
+                });
+              },
+              child: const Icon(Iconsax.close_circle),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool is_darkmode = getValue("is_darkmode", false);
+    Color color_page = (is_darkmode) ? Colors.black : Colors.white;
+    Color color_main = (is_darkmode) ? Colors.white : Colors.black;
+    String typePage = getValue("type_page", "home");
+    if (typePage == "home") {
+      setValue("is_contains_navigation_bar", true);
     }
+    String subtypePage = getValue("subtype_page", "brainly");
+    int indexPage = getValue("index_page", 0);
+    bool is_potrait =
+        MediaQuery.of(context).orientation == Orientation.portrait;
+
+    if (typePage == "chat") {
+      if (!is_potrait) {
+        setValue("is_contains_app_bar", false);
+      } else {
+        setValue("is_contains_app_bar", true);
+      }
+    }
+
+    chatAppBar() {
+      return Container(
+        color: color_page,
+        padding: const EdgeInsets.all(10.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Visibility(
+              visible: is_potrait,
+              child: InkWell(
+                child: const Icon(
+                  Iconsax.arrow_left,
+                  color: Colors.black,
+                  size: 25,
+                ),
+                onTap: () {
+                  setState(() {
+                    setValue("is_contains_app_bar", false);
+                    setValue("is_contains_navigation_bar", true);
+                    setValue("type_page", "home");
+                    setValue("index_page", 0);
+                  });
+                },
+              ),
+            ),
+            Visibility(
+              visible: is_potrait,
+              child: const SizedBox(
+                width: 10.0,
+              ),
+            ),
+            /*
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: Colors.blueGrey[100],
+                          backgroundImage: AssetImage(""),
+                        ),
+                        */
+            const SizedBox(
+              width: 10.0,
+            ),
+            const Text(
+              "Hexa-Assistent",
+              style: TextStyle(
+                color: Colors.blueGrey,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget NavigationBar() {
+      List items = [
+        {
+          "icon": const Icon(Iconsax.message, color: Colors.black),
+          "title": const Text("Message"),
+          "selectedColor": Colors.black,
+          "type": "home"
+        },
+        {
+          "icon": const Icon(Iconsax.call, color: Colors.black),
+          "title": const Text("Call"),
+          "selectedColor": Colors.black,
+          "type": "news"
+        },
+        {
+          "icon": const Icon(Iconsax.gallery, color: Colors.black),
+          "title": const Text("Chat"),
+          "selectedColor": Colors.black,
+          "type": "chat"
+        },
+        {
+          "icon": const Icon(Iconsax.profile_2user, color: Colors.black),
+          "title": const Text("Me"),
+          "selectedColor": Colors.black,
+          "type": "me"
+        }
+      ];
+
+      Color? selectedItemColor;
+      Color? unselectedItemColor;
+      double? selectedColorOpacity;
+
+      onTap(int index) {
+        if (items[index]["type"] == "home") {
+          setValue("is_contains_app_bar", false);
+          setValue("is_contains_navigation_bar", true);
+          setValue("type_page", "home");
+        }
+        if (items[index]["type"] == "chat") {
+          if (is_potrait) {
+            setValue("is_contains_app_bar", true);
+          }
+          setValue("is_contains_navigation_bar", true);
+          setValue("type_page", "chat");
+        }
+        if (items[index]["type"] == "news") {
+          setValue("is_contains_app_bar", false);
+          setValue("is_contains_navigation_bar", true);
+          setValue("type_page", "news");
+        }
+        if (items[index]["type"] == "settings") {
+          setValue("is_contains_app_bar", false);
+          setValue("is_contains_navigation_bar", true);
+          setValue("type_page", "settings");
+        }
+        if (items[index]["type"] == "me") {
+          setValue("is_contains_app_bar", false);
+          setValue("is_contains_navigation_bar", true);
+          setValue("type_page", "me");
+        }
+        setState(() {
+          setValue("index_page", index);
+        });
+      }
+
+      List<Widget> widgetNavigation = items.map((item) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween(
+            end: items.indexOf(item) == indexPage ? 1.0 : 0.0,
+          ),
+          curve: Curves.easeOutQuint,
+          duration: const Duration(milliseconds: 500),
+          builder: (context, t, _) {
+            final selectedColor = item["selectedColor"] ??
+                selectedItemColor ??
+                Theme.of(context).primaryColor;
+
+            final unselectedColor = item["unselectedColor"] ??
+                unselectedItemColor ??
+                Theme.of(context).iconTheme.color;
+
+            return Material(
+              color: Color.lerp(
+                selectedColor.withOpacity(
+                  0.0,
+                ),
+                selectedColor.withOpacity(
+                  selectedColorOpacity ?? 0.1,
+                ),
+                t,
+              ),
+              shape: const StadiumBorder(),
+              child: InkWell(
+                onTap: () async {
+                  var index_count = items.indexOf(item);
+                  onTap.call(index_count);
+                },
+                customBorder: const StadiumBorder(),
+                focusColor: selectedColor.withOpacity(0.1),
+                highlightColor: selectedColor.withOpacity(
+                  0.1,
+                ),
+                splashColor: selectedColor.withOpacity(
+                  0.1,
+                ),
+                hoverColor: selectedColor.withOpacity(0.1),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 16,
+                      ) -
+                      EdgeInsets.only(
+                        right: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 16,
+                            ).right *
+                            t,
+                      ),
+                  child: Row(
+                    children: [
+                      IconTheme(
+                        data: IconThemeData(
+                          color: Color.lerp(
+                            unselectedColor,
+                            selectedColor,
+                            t,
+                          ),
+                          size: 24,
+                        ),
+                        child: items.indexOf(item) == indexPage
+                            ? item["activeIcon"] ?? item["icon"]
+                            : item["icon"],
+                      ),
+                      ClipRect(
+                        child: SizedBox(
+                          height: 20,
+                          child: Align(
+                            alignment: const Alignment(-0.2, 0.0),
+                            widthFactor: t,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                  left: const EdgeInsets.symmetric(
+                                              vertical: 10, horizontal: 16)
+                                          .right /
+                                      2,
+                                  right: const EdgeInsets.symmetric(
+                                          vertical: 10, horizontal: 16)
+                                      .right),
+                              child: DefaultTextStyle(
+                                style: TextStyle(
+                                  color: Color.lerp(
+                                      selectedColor.withOpacity(0.0),
+                                      selectedColor,
+                                      t),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                child: item["title"],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }).toList();
+      return Container(
+        constraints: BoxConstraints(
+          minWidth: is_potrait ? MediaQuery.of(context).size.width : 0.0,
+          minHeight: !is_potrait ? MediaQuery.of(context).size.height : 0.0,
+        ),
+        padding: const EdgeInsets.all(2),
+        child: Material(
+          type: MaterialType.card,
+          color: Colors.white,
+          shadowColor: Colors.black,
+          borderRadius: BorderRadius.circular(20),
+          child: is_potrait
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: widgetNavigation,
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: widgetNavigation,
+                ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: color_page,
+      body: ValueListenableBuilder(
+        valueListenable: Hive.box('telegram_client').listenable(),
+        builder: (context, box, widget) {
+          return LayoutBuilder(builder: (BuildContext ctx, constraints) {
+            List<Map<String, dynamic>> messages = [
+              {"is_outgoing": true, "content": "hello world"},
+            ];
+            Widget bodyLandscape(Widget mainBody) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Flexible(child: NavigationBar()),
+                  Expanded(flex: 4, child: mainBody),
+                ],
+              );
+            }
+
+            if (typePage == "home") {
+              List chats = getValue("chats", []);
+              Widget bodyHome() {
+                return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ...chats.map((res) {
+                        var nick_name = "";
+                        Map last_message = {};
+                        if (res["last_message"] is Map &&
+                            (res["last_message"] as Map).isNotEmpty) {
+                          last_message = res["last_message"];
+                        }
+                        int unread_count = 0;
+                        var date = "";
+                        if (last_message["date"] is int) {
+                          date = last_message["date"].toString();
+                        }
+                        if (res["type"] == "private") {
+                          nick_name = res["first_name"];
+                        } else {
+                          nick_name = res["title"];
+                        }
+                        if (res["detail"] is Map) {
+                          if (res["detail"]["unread_count"] is int) {
+                            unread_count = res["detail"]["unread_count"];
+                          }
+                        }
+                        return InkWell(
+                          onTap: () async {},
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: Image.asset(
+                                    "assets/icons/app.png",
+                                    scale: 12,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        nick_name,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height: 5,
+                                      ),
+                                      Text(
+                                        nick_name,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Spacer(),
+                                Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        date,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height: 5,
+                                      ),
+                                      Visibility(
+                                          visible: (unread_count != 0),
+                                          child: Text(
+                                            unread_count.toString(),
+                                          )),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ]);
+              }
+
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                child: is_potrait ? bodyHome() : bodyLandscape(bodyHome()),
+              );
+            }
+            if (typePage == "feature") {}
+            if (typePage == "chat") {
+              Widget bodyChat = Container(
+                width: MediaQuery.of(context).size.width,
+                decoration: const BoxDecoration(
+                    /*
+                
+            image: DecorationImage(
+              image: AssetImage(
+                "assets/images/nft.jpg",
+              ),
+              fit: BoxFit.cover,
+            ),
+            */
+                    ),
+                child: Column(
+                  children: [
+                    Visibility(
+                      visible: !is_potrait,
+                      child: chatAppBar(),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        primary: false,
+                        itemCount: messages.length,
+                        shrinkWrap: true,
+                        scrollDirection: Axis.vertical,
+                        padding: const EdgeInsets.only(top: 10),
+                        physics: const BouncingScrollPhysics(),
+                        itemBuilder: (context, index) {
+                          return GestureDetector(
+                            onTap: () {
+                              if (kDebugMode) {
+                                print("tap");
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.only(
+                                right: 5.0,
+                                left: 5.0,
+                                bottom: 10,
+                              ),
+                              child: Align(
+                                alignment: (messages[index]["is_outgoing"]
+                                    ? Alignment.topRight
+                                    : Alignment.topLeft),
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                        MediaQuery.of(context).size.width - 45,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: messages[index]["is_outgoing"]
+                                        ? BorderRadius.only(
+                                            topRight: Radius.circular(
+                                                (messages.length == (index + 1))
+                                                    ? 0
+                                                    : 11),
+                                            topLeft: const Radius.circular(11),
+                                            bottomRight:
+                                                Radius.circular((index == 0)
+                                                    ? (messages.length == 1)
+                                                        ? 11
+                                                        : 0
+                                                    : 11),
+                                            bottomLeft:
+                                                const Radius.circular(11),
+                                          )
+                                        : BorderRadius.only(
+                                            topRight: const Radius.circular(11),
+                                            topLeft: Radius.circular(
+                                                (messages.length == (index + 1))
+                                                    ? 0
+                                                    : 11),
+                                            bottomRight:
+                                                const Radius.circular(11),
+                                            bottomLeft:
+                                                Radius.circular((index == 0)
+                                                    ? (messages.length == 1)
+                                                        ? 11
+                                                        : 0
+                                                    : 11),
+                                          ),
+                                    color: (messages[index]["is_outgoing"]
+                                        ? Colors.blue[200]
+                                        : Colors.grey.shade200),
+                                  ),
+                                  padding: const EdgeInsets.all(16),
+                                  child: Text(
+                                    messages[index]["content"],
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Container(
+                      width: MediaQuery.of(context).size.width,
+                      constraints: const BoxConstraints(
+                        maxHeight: 150.0,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Color(0xffFFFFFF),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            spreadRadius: 0,
+                            blurRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        keyboardType: TextInputType.multiline,
+                        maxLines: 100,
+                        minLines: 1,
+                        decoration: InputDecoration(
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.all(5.0),
+                            child: InkWell(
+                              child: const Icon(
+                                Iconsax.happyemoji,
+                                color: Colors.pink,
+                                size: 25,
+                              ),
+                              onTap: () {},
+                            ),
+                          ),
+                          suffixIcon: Padding(
+                            padding: const EdgeInsets.all(5.0),
+                            child: InkWell(
+                              child: const Icon(
+                                Iconsax.send_1,
+                                color: Colors.blue,
+                                size: 25,
+                              ),
+                              onTap: () {},
+                            ),
+                          ),
+                          hintText: "Typing here",
+                          hintStyle: const TextStyle(color: Colors.grey),
+                          border: InputBorder.none,
+                        ),
+                        onChanged: (text) {},
+                        onTap: () {},
+                      ),
+                    ),
+                  ],
+                ),
+              );
+              if (is_potrait) {
+                return bodyChat;
+              } else {
+                return bodyLandscape(bodyChat);
+              }
+            }
+            debug(typePage);
+            if (typePage == "settings") {
+              Widget contentListSettings(String title,
+                  {required void Function() onPressed,
+                  required IconData icon,
+                  double? vertical,
+                  double? horizontal}) {
+                return MaterialButton(
+                  onPressed: onPressed,
+                  padding: EdgeInsets.symmetric(
+                      horizontal: horizontal ?? 20, vertical: vertical ?? 20),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Icon(icon),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      const Icon(Iconsax.arrow_right_1),
+                    ],
+                  ),
+                );
+              }
+
+              Widget bodyChat = SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics()),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Visibility(
+                      visible: is_potrait,
+                      child: chatAppBar(),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(1),
+                              spreadRadius: 1,
+                              blurRadius: 7,
+                              offset: const Offset(
+                                  0, 3), // changes position of shadow
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            contentListSettings("App Features",
+                                onPressed: () {},
+                                icon: Iconsax.message_question),
+                            contentListSettings("Settings",
+                                onPressed: () {}, icon: Iconsax.setting),
+                            Row(
+                              children: const [Expanded(child: Divider())],
+                            ),
+                            contentListSettings("App Features",
+                                onPressed: () {},
+                                icon: Iconsax.message_question),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+              if (is_potrait) {
+                return bodyChat;
+              } else {
+                return bodyLandscape(bodyChat);
+              }
+            }
+
+            if (is_potrait) {
+              return Text(
+                "hello world",
+                style: TextStyle(color: color_main),
+              );
+            } else {
+              return bodyLandscape(Text(
+                "hello world",
+                style: TextStyle(color: color_main),
+              ));
+            }
+          });
+        },
+      ),
+      floatingActionButton: Visibility(
+        visible: false,
+        child: Builder(builder: (BuildContext ctx) {
+          return Container();
+        }),
+      ),
+      appBar: getValue("is_contains_app_bar", false)
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(50),
+              child: Builder(builder: (ctx) {
+                if (typePage == "chat") {
+                  return chatAppBar();
+                }
+                return Container();
+              }),
+            )
+          : null,
+      bottomNavigationBar: Visibility(
+        visible: (getValue("is_contains_navigation_bar", true) && is_potrait),
+        child: Builder(
+          builder: (ctx) {
+            return NavigationBar();
+            return const Text("keko");
+          },
+        ),
+      ),
+    );
   }
 }
 
-class JSON {
-  static String stringify(value, replace, int space) {
-    var spaceText = "";
-    for (var i = 0; i < space; i++) {
-      spaceText += " ";
-    }
-    try {
-      JsonEncoder encoder = JsonEncoder.withIndent(spaceText);
-      return encoder.convert(value);
-    } catch (e) {
-      print(e);
-      try {
-        return json.encode(value);
-      } catch (e) {
-        return "error";
+void debug(Object? data) {
+  if (kDebugMode) {
+    print(data);
+  }
+}
+
+void debugFunction(Tdlib tg,
+    {required String method,
+    Map<String, dynamic>? parameters,
+    bool is_sync = false,
+    bool is_raw = false}) async {
+  try {
+    parameters ??= {};
+    if (is_sync) {
+      debug(tg.invokeSync(method, parameters));
+    } else {
+      if (is_raw) {
+        debug(await tg.invoke(method, parameters));
+      } else {
+        debug(await tg.request(method, parameters));
       }
     }
+  } catch (e) {
+    debug(e);
   }
 }

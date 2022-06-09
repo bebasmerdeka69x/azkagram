@@ -40,13 +40,13 @@ android {
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
         main {
-            jniLibs.srcDirs = ['src/tdlib']
+            jniLibs.srcDirs = ['src/debug/jniLibs']
         }
     }
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "com.azkadev.azkagram"
+        applicationId "com.example.example"
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
@@ -66,6 +66,6 @@ flutter {
     source '../..'
 }
 
-dependencies {
+dependencies {       
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 }
