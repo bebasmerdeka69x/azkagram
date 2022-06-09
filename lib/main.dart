@@ -23,6 +23,7 @@ void main(List<String> args) async {
     systemNavigationBarIconBrightness: Brightness.dark,
   ));
   Hive.init(appSupport.path);
+  debug(appSupport.path);
   Box<dynamic> box = await Hive.openBox('telegram_client');
   Widget typePage;
   List users = box.get("users", defaultValue: []);
@@ -114,6 +115,10 @@ void main(List<String> args) async {
       debugShowCheckedModeBanner: false,
     ));
   }
+  return runApp(MaterialApp(
+    home: typePage,
+    debugShowCheckedModeBanner: false,
+  ));
 }
 
 class SignPage extends StatefulWidget {
@@ -1679,7 +1684,6 @@ class _MainPageState extends State<MainPage> {
                     }
                   });
                 }
-                print(is_bot);
               }
 
               if (authStateType == "authorizationStateClosing") {}
@@ -1691,7 +1695,6 @@ class _MainPageState extends State<MainPage> {
           }
 
           if (type == "updateConnectionState") {
-            print(update.raw);
             if (update.raw["state"]["@type"] == "connectionStateConnecting") {
               setState(() {
                 is_no_connection = true;
@@ -2171,7 +2174,7 @@ class _MainPageState extends State<MainPage> {
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
-                child: is_potrait ? bodyHome() : bodyLandscape(bodyHome()),
+                child: is_potrait ? ConstrainedBox(constraints: BoxConstraints(minWidth: constraints.maxHeight, minHeight: constraints.maxHeight), child: bodyHome()) : bodyLandscape(bodyHome()),
               );
             }
             if (typePage == "feature") {}
