@@ -1,0 +1,28 @@
+name: Build Cross Platform Artifact
+on: [workflow_dispatch]
+# There is a single job here called "build" (The word "build" is NOT a keyword, you can use anything there)
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
+    runs-on: ${{ matrix.os }}
+    # Just a free-text name to be descriptive
+    name: Build App on ${{ matrix.os }}
+    steps:
+      - name: Export Release Timestamp
+        run: echo "APP_VERSION=v$(date +'%Y.%m.%d.%H.%M.%S')" >> $GITHUB_ENV
+      - name: Checkout repository
+        uses: actions/checkout@v1
+      - name: Set up Java
+        uses: actions/setup-java@v2
+        with:
+          java-version: '15'
+          distribution: 'adopt'
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.0.0'
+          channel: 'stable'
+      - name: Install pub Dependencies
+        run: flutter pub get 
