@@ -10,7 +10,8 @@ Kasih saya stars agar saya mempercepat update azkagram
 ## Feature next
 if you stars  my repo i will publish feature to azkagram
 - 1000 stars
-  -  add support load config.json for automation your account
+  -  i will add code load config.json for automation your account
+  -  i will add story update for contact
 
 ## Screenshot
 ![Screenshot from 2022-06-09 22-03-39](https://user-images.githubusercontent.com/82513502/172880974-7bd13318-7934-4bca-acfb-911da5982ba5.png)
