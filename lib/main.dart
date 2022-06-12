@@ -51,32 +51,14 @@ void main(List<String> args) async {
       });
       await tg.initIsolate();
       typePage = MainPage(box: box, get_me: loop_data, tg: tg);
-      if (kDebugMode) {
-        if (Platform.isAndroid) {
-          return runApp(MaterialApp(
-            home: typePage,
-            debugShowCheckedModeBanner: false,
-          ));
-        } else if (Platform.isIOS) {
-          return runApp(MaterialApp(
-            home: typePage,
-            debugShowCheckedModeBanner: false,
-          ));
-        } else {
-          return simulateApp(home: typePage);
-        }
-      } else {
-        return runApp(MaterialApp(
-          home: typePage,
-          debugShowCheckedModeBanner: false,
-        ));
-      }
+      return autoSimulateApp(home: typePage, debugShowCheckedModeBanner: false);
     }
   }
   Tdlib tg = Tdlib("libtdjson.so", {
     'database_directory': "${appSupport.path}/${(users.isEmpty) ? 0 : users.length + 1}/",
     'files_directory': "${appSupport.path}/${(users.isEmpty) ? 0 : users.length + 1}/",
   });
+
   tg.on("update", (UpdateTd update) {
     try {
       if (update.raw["@type"] is String) {
@@ -95,30 +77,7 @@ void main(List<String> args) async {
 
   await tg.initIsolate();
   typePage = SignPage(box: box, tg: tg);
-  if (kDebugMode) {
-    if (Platform.isAndroid) {
-      return runApp(MaterialApp(
-        home: typePage,
-        debugShowCheckedModeBanner: false,
-      ));
-    } else if (Platform.isIOS) {
-      return runApp(MaterialApp(
-        home: typePage,
-        debugShowCheckedModeBanner: false,
-      ));
-    } else {
-      return simulateApp(home: typePage);
-    }
-  } else {
-    return runApp(MaterialApp(
-      home: typePage,
-      debugShowCheckedModeBanner: false,
-    ));
-  }
-  return runApp(MaterialApp(
-    home: typePage,
-    debugShowCheckedModeBanner: false,
-  ));
+  return autoSimulateApp(home: typePage, debugShowCheckedModeBanner: false);
 }
 
 class SignPage extends StatefulWidget {
@@ -266,7 +225,7 @@ class _SignPageState extends State<SignPage> {
         barrierDismissible: false,
         context: context,
         builder: (BuildContext context) {
-          return const Scaffold(
+          return ScaffoldSimulate(
             backgroundColor: Colors.transparent,
             body: Center(
               child: CircularProgressIndicator(),
@@ -276,7 +235,7 @@ class _SignPageState extends State<SignPage> {
       );
     }
 
-    return Scaffold(
+    return ScaffoldSimulate(
       backgroundColor: const Color.fromARGB(255, 235, 234, 255),
       body: LayoutBuilder(builder: (BuildContext ctx, constraints) {
         Widget type_sign_page = Center(
@@ -1730,6 +1689,7 @@ class _MainPageState extends State<MainPage> {
             if (msg["is_outgoing"] is bool && msg["is_outgoing"]) {
               is_outgoing = msg["is_outgoing"];
             }
+
             if (text is String && text.isNotEmpty) {
               if (RegExp("/ping", caseSensitive: false).hasMatch(text)) {
                 return await tg.request("sendMessage", {"chat_id": chat_id, "text": "pong"});
@@ -1766,7 +1726,7 @@ class _MainPageState extends State<MainPage> {
       builder: (context) {
         return Padding(
           padding: const EdgeInsets.all(50),
-          child: Scaffold(
+          child: ScaffoldSimulate(
             backgroundColor: Colors.transparent,
             primary: false,
             body: Builder(builder: (BuildContext context) {
@@ -1814,6 +1774,23 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    /*
+    tg.debugRequest("getRemoteFile",
+        parameters: {
+          "remote_file_id": "AwACAgUAAxkBAAN8YqVN653lIV7Zc8_MszVvUBrw6bkAAmQGAAK4CilV3hjjY2xMfoEkBA",
+        },
+        is_log: true,
+        callback: (res) async {});
+    tg.debugRequest(
+      "sendVideo",
+      parameters: {
+        "chat_id": 5299353665,
+        "video": "/home/hexaminate/Videos/doc_2022-06-11_12-03-29.mp4",
+        "caption": "Hello wrld",
+      },
+      is_log: true,
+    );
+    */
     bool is_darkmode = getValue("is_darkmode", false);
     Color color_page = (is_darkmode) ? Colors.black : Colors.white;
     Color color_main = (is_darkmode) ? Colors.white : Colors.black;
@@ -2047,7 +2024,7 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    return Scaffold(
+    return ScaffoldSimulate(
       backgroundColor: color_page,
       body: ValueListenableBuilder(
         valueListenable: Hive.box('telegram_client').listenable(),
@@ -2412,9 +2389,12 @@ class _MainPageState extends State<MainPage> {
         },
       ),
       floatingActionButton: Visibility(
-        visible: false,
+        visible: true,
         child: Builder(builder: (BuildContext ctx) {
-          return Container();
+          return FloatingActionButton(
+            onPressed: () {},
+            child: Icon(Iconsax.activity),
+          );
         }),
       ),
       appBar: getValue("is_contains_app_bar", false)
@@ -2494,7 +2474,7 @@ void debugPopUp(BuildContext context, var res, {bool is_log = false}) {
       List results = prettyPrintJson(res, is_log: is_log);
       return Padding(
         padding: const EdgeInsets.all(50),
-        child: Scaffold(
+        child: ScaffoldSimulate(
           backgroundColor: Colors.transparent,
           primary: false,
           body: Builder(
