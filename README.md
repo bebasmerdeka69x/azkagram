@@ -24,4 +24,4 @@ if you stars  my repo i will publish feature to azkagram
 ![Screenshot from 2022-06-09 22-06-07](https://user-images.githubusercontent.com/82513502/172880794-3eae08b8-3e55-40ed-8300-9427dd291118.png)
 ![Screenshot from 2022-06-09 22-33-21](https://user-images.githubusercontent.com/82513502/172886624-396dd4e3-9eff-4a06-af80-5fa5df5b4a32.png)
 
-![2022-06-13 07:47:03 624297](https://user-images.githubusercontent.com/82513502/173260946-e82435c1-357b-4971-86e6-2d0b7ceb3557.png)
+ ![2022-06-13 08:27:08 245781](https://user-images.githubusercontent.com/82513502/173263724-2cfac4ad-62a9-4c35-9e68-2d3c1492d00b.png)
