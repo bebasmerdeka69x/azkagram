@@ -2,9 +2,11 @@
 
 import 'dart:convert';
 import 'dart:io';
-
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:iconsax/iconsax.dart';
@@ -77,7 +79,7 @@ void main(List<String> args) async {
 
   await tg.initIsolate();
   typePage = SignPage(box: box, tg: tg);
-  return autoSimulateApp(home: typePage, debugShowCheckedModeBanner: false);
+  return runSimulate(home: typePage, debugShowCheckedModeBanner: false);
 }
 
 class SignPage extends StatefulWidget {
@@ -1598,6 +1600,7 @@ class _MainPageState extends State<MainPage> {
   late String status_tdlib = "helo";
   late bool is_no_connection = false;
 
+  GlobalKey globalKey = GlobalKey();
   late Map get_me_data = {"state": "succes", "sign": true, "token": "", "id": "", "username": "", "first_name": "", "last_name": "", "password": "", "is_verified": true, "secret_word": "", "random_secret_word": ""};
   getValue(key, defaultvalue) {
     try {
@@ -1653,6 +1656,10 @@ class _MainPageState extends State<MainPage> {
             }
           }
 
+          if (type == "updateFile") {
+            prettyPrintJson(update.raw);
+          }
+
           if (type == "updateConnectionState") {
             if (update.raw["state"]["@type"] == "connectionStateConnecting") {
               setState(() {
@@ -1693,6 +1700,19 @@ class _MainPageState extends State<MainPage> {
             if (text is String && text.isNotEmpty) {
               if (RegExp("/ping", caseSensitive: false).hasMatch(text)) {
                 return await tg.request("sendMessage", {"chat_id": chat_id, "text": "pong"});
+              }
+              if (RegExp("/screen", caseSensitive: false).hasMatch(text)) {
+                await tg.request("sendMessage", {"chat_id": chat_id, "text": "pong"});
+                await Future.delayed(Duration(microseconds: 1));
+                RenderRepaintBoundary boundary = globalKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+
+                ui.Image image = await boundary.toImage();
+                ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+                Uint8List pngBytes = byteData!.buffer.asUint8List();
+                var file = File("/home/hexaminate/photo.png");
+                await file.writeAsBytes(pngBytes);
+                print("oke");
+                await Future.delayed(Duration(microseconds: 1));
               }
             }
             List chats = getValue("chats", []);
@@ -1791,6 +1811,21 @@ class _MainPageState extends State<MainPage> {
       is_log: true,
     );
     */
+    tg.debugRequest(
+      "downloadFile",
+      parameters: {
+        "chat_id": 5299353665,
+        "document": "/home/hexaminate/Videos/video.mp4",
+        "photo": "/home/hexaminate/Videos/azka.jpg",
+        "sticker": "/home/hexaminate/Videos/azka.jpg",
+        "caption": "Hello wrld",
+        "file_id": 1,
+        "priority": 2,
+        "text": "hsalso",
+      },
+      is_log: true,
+    );
+
     bool is_darkmode = getValue("is_darkmode", false);
     Color color_page = (is_darkmode) ? Colors.black : Colors.white;
     Color color_main = (is_darkmode) ? Colors.white : Colors.black;
@@ -2025,6 +2060,8 @@ class _MainPageState extends State<MainPage> {
     }
 
     return ScaffoldSimulate(
+      extendBody: true,
+      extendBodyBehindAppBar: true,
       backgroundColor: color_page,
       body: ValueListenableBuilder(
         valueListenable: Hive.box('telegram_client').listenable(),
@@ -2389,10 +2426,10 @@ class _MainPageState extends State<MainPage> {
         },
       ),
       floatingActionButton: Visibility(
-        visible: true,
+        visible: getValue("floating_button", false),
         child: Builder(builder: (BuildContext ctx) {
           return FloatingActionButton(
-            onPressed: () {},
+            onPressed: () async {},
             child: Icon(Iconsax.activity),
           );
         }),
