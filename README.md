@@ -21,7 +21,7 @@ if you stars  my repo i will publish feature to azkagram
 
 ## Screenshot​
  
-<img src="https://user-images.githubusercontent.com/82513502/173433798-9e29f5e3-ee0f-425f-a24b-2134de3d3cf9.png" width="250px"><img src="https://user-images.githubusercontent.com/82513502/173319039-81f2a921-f6a8-4ad8-b369-952e98ab3163.png" width="250px">
+<img src="https://user-images.githubusercontent.com/82513502/173433798-9e29f5e3-ee0f-425f-a24b-2134de3d3cf9.png" width="250px"><img src="https://raw.githubusercontent.com/azkadev/azkagram/main/screenshot/me.png" width="250px">
 
 <img src="https://user-images.githubusercontent.com/82513502/173319331-9e96fbe7-3e66-44b2-8577-f6685d86a368.png" width="250px"><img src="https://user-images.githubusercontent.com/82513502/173319541-19a60407-f410-4e95-8ac0-d0da2eaf2457.png" width="250px">
 
