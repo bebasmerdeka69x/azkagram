@@ -1,6 +1,6 @@
 # Azkagram
 
-Telegram Open Source cross platform on flutter and telegram_client
+Telegram Open source based flutter and dart, dengan tampilan terbaru + tambahan feature integrated apps dari [HEXAMINATE](https://hexaminate.netlify.app/)
 
 Kasih saya stars agar saya mempercepat update azkagram
 
