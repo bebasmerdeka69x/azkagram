@@ -1,5 +1,7 @@
 // ignore_for_file: non_constant_identifier_names, unused_local_variable, use_build_context_synchronously, duplicate_ignore, dead_code
 
+library azkagram;
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -14,6 +16,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:telegram_client/telegram_client.dart';
 import 'package:simulate/simulate.dart';
 import 'package:path_provider/path_provider.dart';
+
 bool is_debug = false;
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
