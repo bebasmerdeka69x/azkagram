@@ -14,7 +14,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:telegram_client/telegram_client.dart';
 import 'package:simulate/simulate.dart';
 import 'package:path_provider/path_provider.dart';
-
+azk
 bool is_debug = false;
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
