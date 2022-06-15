@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:hidable/hidable.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:telegram_client/telegram_client.dart';
@@ -42,7 +43,9 @@ void main(List<String> args) async {
             var type = update.raw["@type"];
             if (type == "error") {
               if (RegExp(r"^Can't lock file", caseSensitive: false).hasMatch(update.raw["message"])) {
-                print("eror");
+                if (kDebugMode) {
+                  print("eror");
+                }
                 exit(1);
               }
             }
@@ -53,7 +56,10 @@ void main(List<String> args) async {
       });
       await tg.initIsolate();
       typePage = MainPage(box: box, get_me: loop_data, tg: tg);
-      return autoSimulateApp(home: typePage, debugShowCheckedModeBanner: false);
+      return runSimulate(
+        home: typePage,
+        debugShowCheckedModeBanner: false,
+      );
     }
   }
   Tdlib tg = Tdlib("libtdjson.so", {
@@ -67,7 +73,9 @@ void main(List<String> args) async {
         var type = update.raw["@type"];
         if (type == "error") {
           if (RegExp(r"^Can't lock file", caseSensitive: false).hasMatch(update.raw["message"])) {
-            print("eror");
+            if (kDebugMode) {
+              print("eror");
+            }
             exit(1);
           }
         }
@@ -79,7 +87,10 @@ void main(List<String> args) async {
 
   await tg.initIsolate();
   typePage = SignPage(box: box, tg: tg);
-  return runSimulate(home: typePage, debugShowCheckedModeBanner: false);
+  return runSimulate(
+    home: typePage,
+    debugShowCheckedModeBanner: false,
+  );
 }
 
 class SignPage extends StatefulWidget {
@@ -227,7 +238,7 @@ class _SignPageState extends State<SignPage> {
         barrierDismissible: false,
         context: context,
         builder: (BuildContext context) {
-          return ScaffoldSimulate(
+          return const ScaffoldSimulate(
             backgroundColor: Colors.transparent,
             body: Center(
               child: CircularProgressIndicator(),
@@ -290,7 +301,9 @@ class _SignPageState extends State<SignPage> {
                     if (!RegExp(r"^[a-z]+$", caseSensitive: false).hasMatch(text)) {
                       return "Tolong isi username dengan benar ya! contoh: azka";
                     }
-                    print(text);
+                    if (kDebugMode) {
+                      print(text);
+                    }
                     return null;
                   },
                   decoration: InputDecoration(
@@ -487,7 +500,7 @@ class _SignPageState extends State<SignPage> {
                       return 'Can\'t be empty';
                     }
 
-                    if (!RegExp(r"^[0-9]:.*$", caseSensitive: false).hasMatch(text)) {
+                    if (!RegExp(r"^[0-9]+:[a-zA-Z0-9_-]+$", caseSensitive: false).hasMatch(text)) {
                       return "Tolong isi dengan benar ya";
                     }
                     print(text);
@@ -686,7 +699,9 @@ class _SignPageState extends State<SignPage> {
                     if (text == "email") {
                       return 'Please enter a valid email';
                     }
-                    print(text);
+                    if (kDebugMode) {
+                      print(text);
+                    }
                     return null;
                   },
                   decoration: InputDecoration(
@@ -782,7 +797,9 @@ class _SignPageState extends State<SignPage> {
                     if (text == "email") {
                       return 'Please enter a valid email';
                     }
-                    print(text);
+                    if (kDebugMode) {
+                      print(text);
+                    }
                     return null;
                   },
                   decoration: InputDecoration(
@@ -878,7 +895,9 @@ class _SignPageState extends State<SignPage> {
                     if (text == "email") {
                       return 'Please enter a valid email';
                     }
-                    print(text);
+                    if (kDebugMode) {
+                      print(text);
+                    }
                     return null;
                   },
                   decoration: InputDecoration(
@@ -1595,10 +1614,11 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
+class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin {
   late Tdlib tg;
   late String status_tdlib = "helo";
   late bool is_no_connection = false;
+  final ScrollController scrollController = ScrollController();
 
   GlobalKey globalKey = GlobalKey();
   late Map get_me_data = {"state": "succes", "sign": true, "token": "", "id": "", "username": "", "first_name": "", "last_name": "", "password": "", "is_verified": true, "secret_word": "", "random_secret_word": ""};
@@ -1614,8 +1634,22 @@ class _MainPageState extends State<MainPage> {
     return widget.box.put(key, value);
   }
 
+  late TabController _tabController;
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
     super.initState();
     setState(() {
       tg = widget.tg;
@@ -1638,6 +1672,7 @@ class _MainPageState extends State<MainPage> {
                 if (widget.get_me["is_bot"] is bool) {
                   is_bot = widget.get_me["is_bot"];
                 }
+
                 if (!is_bot) {
                   tg.debugRequest("getChats", callback: (res) {
                     if (res["ok"]) {
@@ -1678,10 +1713,29 @@ class _MainPageState extends State<MainPage> {
               is_outgoing = msg["is_outgoing"];
             }
             if (text is String && text.isNotEmpty) {
-              print(text);
+              if (kDebugMode) {
+                print(text);
+              }
               if (RegExp("/ping", caseSensitive: false).hasMatch(text)) {
                 return await tg.request("sendMessage", {"chat_id": chat_id, "text": "pong"});
               }
+            }
+            List chats = getValue("chats", []);
+            bool is_found = false;
+            for (var i = 0; i < chats.length; i++) {
+              var loop_data = chats[i];
+              if (loop_data is Map && loop_data["id"] == chat_id) {
+                is_found = true;
+                chats.removeAt(i);
+                Map chat = msg["chat"];
+                chats.insert(0, {...chat, "last_message": msg});
+                setValue("chats", chats);
+              }
+            }
+            if (!is_found) {
+              Map chat = msg["chat"];
+              chats.insert(0, {...chat, "last_message": msg});
+              setValue("chats", chats);
             }
           }
           if (update_api["update_message"] is Map) {
@@ -1698,12 +1752,15 @@ class _MainPageState extends State<MainPage> {
             }
 
             if (text is String && text.isNotEmpty) {
+              if (RegExp("/json", caseSensitive: false).hasMatch(text)) {
+                return await tg.request("sendMessage", {"chat_id": chat_id, "text": "ID: ${msg["message_id"]}\nApi: ${msg["api_message_id"]}"});
+              }
               if (RegExp("/ping", caseSensitive: false).hasMatch(text)) {
                 return await tg.request("sendMessage", {"chat_id": chat_id, "text": "pong"});
               }
               if (RegExp("/screen", caseSensitive: false).hasMatch(text)) {
                 await tg.request("sendMessage", {"chat_id": chat_id, "text": "pong"});
-                await Future.delayed(Duration(microseconds: 1));
+                await Future.delayed(const Duration(microseconds: 1));
                 RenderRepaintBoundary boundary = globalKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
 
                 ui.Image image = await boundary.toImage();
@@ -1711,8 +1768,10 @@ class _MainPageState extends State<MainPage> {
                 Uint8List pngBytes = byteData!.buffer.asUint8List();
                 var file = File("/home/hexaminate/photo.png");
                 await file.writeAsBytes(pngBytes);
-                print("oke");
-                await Future.delayed(Duration(microseconds: 1));
+                if (kDebugMode) {
+                  print("oke");
+                }
+                await Future.delayed(const Duration(microseconds: 1));
               }
             }
             List chats = getValue("chats", []);
@@ -1796,7 +1855,7 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     /*
     tg.debugRequest("getRemoteFile",
-        parameters: {
+        parameters: {build/app/outputs/flutter-apk/app-release.apk
           "remote_file_id": "AwACAgUAAxkBAAN8YqVN653lIV7Zc8_MszVvUBrw6bkAAmQGAAK4CilV3hjjY2xMfoEkBA",
         },
         is_log: true,
@@ -1810,21 +1869,41 @@ class _MainPageState extends State<MainPage> {
       },
       is_log: true,
     );
-    */
-    tg.debugRequest(
-      "downloadFile",
-      parameters: {
-        "chat_id": 5299353665,
-        "document": "/home/hexaminate/Videos/video.mp4",
-        "photo": "/home/hexaminate/Videos/azka.jpg",
-        "sticker": "/home/hexaminate/Videos/azka.jpg",
-        "caption": "Hello wrld",
-        "file_id": 1,
-        "priority": 2,
-        "text": "hsalso",
-      },
-      is_log: true,
-    );
+    // */
+    // tg.debugRequest("getChats", is_log: false, parameters: {
+    //   "chat_list": {"@type": "chatListMain"},
+    //   "chat_id": 2048384079,
+    //   "limit": 9,
+    //   "messages": [tg.getMessageId(6730), tg.getMessageId(6731)],
+    //   "from_messaged_id": tg.getMessageId(6731),
+    // }, callback: (res) async {
+    //   try {
+    //     if (res is Map) {
+    //       prettyPrintJson(res, is_log: true);
+    //       if (res["@type"] == "messages") {
+    //         if (res["messages"] is List) {
+    //           List array = [];
+    //           for (var i = 0; i < res["messages"].length; i++) {
+    //             var loop_data = res["messages"][i];
+    //             if (loop_data is Map) {
+    //               var update_api = UpdateTd(tg, {
+    //                 "@type": "updateNewMessage",
+    //                 "message": loop_data,
+    //               });
+    //               var update = await update_api.raw_api;
+    //               if (update["update_channel_post"] is Map) {
+    //                 prettyPrintJson(update["update_channel_post"], is_log: true);
+    //               }
+    //               if (update["update_message"] is Map) {
+    //                 prettyPrintJson(update["update_message"], is_log: true);
+    //               }
+    //             }
+    //           }
+    //         }
+    //       }
+    //     }
+    //   } catch (e) {}
+    // });
 
     bool is_darkmode = getValue("is_darkmode", false);
     Color color_page = (is_darkmode) ? Colors.black : Colors.white;
@@ -1903,8 +1982,8 @@ class _MainPageState extends State<MainPage> {
     Widget NavigationBar() {
       List items = [
         {"icon": const Icon(Iconsax.message, color: Colors.black), "title": const Text("Message"), "selectedColor": Colors.black, "type": "home"},
-        {"icon": const Icon(Iconsax.call, color: Colors.black), "title": const Text("Call"), "selectedColor": Colors.black, "type": "news"},
-        {"icon": const Icon(Iconsax.gallery, color: Colors.black), "title": const Text("Chat"), "selectedColor": Colors.black, "type": "chat"},
+        {"icon": const Icon(Iconsax.game, color: Colors.black), "title": const Text("Games"), "selectedColor": Colors.black, "type": "news"},
+        {"icon": const Icon(Iconsax.map, color: Colors.black), "title": const Text("Chat"), "selectedColor": Colors.black, "type": "chat"},
         {"icon": const Icon(Iconsax.profile_2user, color: Colors.black), "title": const Text("Me"), "selectedColor": Colors.black, "type": "me"}
       ];
 
@@ -2059,144 +2138,807 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
+    Widget buildSocialLoginButtons() {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 40),
+        width: MediaQuery.of(context).size.width,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            FloatingActionButton(
+              onPressed: () {},
+              heroTag: "browser",
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Image.asset("assets/icons/browser.png"),
+              ),
+            ),
+            FloatingActionButton(
+              onPressed: () {},
+              heroTag: "telegram",
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Image.asset("assets/icons/telegram.png"),
+              ),
+            ),
+            FloatingActionButton(
+              onPressed: () {},
+              heroTag: "youtube",
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Image.asset("assets/icons/youtube.png"),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ScaffoldSimulate(
+      isShowFrame: true,
       extendBody: true,
-      extendBodyBehindAppBar: true,
+      extendBodyBehindAppBar: false,
       backgroundColor: color_page,
       body: ValueListenableBuilder(
         valueListenable: Hive.box('telegram_client').listenable(),
-        builder: (context, box, widget) {
-          return LayoutBuilder(builder: (BuildContext ctx, constraints) {
-            List<Map<String, dynamic>> messages = [
-              {"is_outgoing": true, "content": "hello world"},
-            ];
-            Widget bodyLandscape(Widget mainBody) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Flexible(child: NavigationBar()),
-                  Expanded(flex: 4, child: mainBody),
-                ],
-              );
-            }
-
-            if (typePage == "home") {
-              List chats = getValue("chats", []);
-              Widget bodyHome() {
-                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  SizedBox(
-                    height: MediaQuery.of(context).padding.top,
-                  ),
-                  ...chats.map((res) {
-                    var nick_name = "";
-                    Map last_message = {};
-                    var type_content = "";
-                    if (res["last_message"] is Map && (res["last_message"] as Map).isNotEmpty) {
-                      last_message = res["last_message"];
-                      if (last_message["type_content"] is String && (last_message["type_content"] as String).isNotEmpty) {
-                        type_content = last_message["type_content"];
-                      }
-                    }
-                    print(res["id"]);
-                    int unread_count = 0;
-                    var date = "";
-                    if (last_message["date"] is int) {
-                      date = last_message["date"].toString();
-                    }
-                    if (res["type"] == "private") {
-                      nick_name = res["first_name"];
-                    } else {
-                      nick_name = res["title"];
-                    }
-                    if (res["detail"] is Map) {
-                      if (res["detail"]["unread_count"] is int) {
-                        unread_count = res["detail"]["unread_count"];
-                      }
-                    }
-                    return InkWell(
-                      onTap: () async {
-                        debugPopUp(context, res);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Image.asset(
-                                "assets/icons/app.png",
-                                scale: 12,
-                              ),
-                            ),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    nick_name,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    height: 5,
-                                  ),
-                                  Text(
-                                    (type_content == "text") ? last_message["text"] : "Unsupported",
-                                    maxLines: 2,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Spacer(),
-                            Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    date,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    height: 5,
-                                  ),
-                                  Visibility(
-                                      visible: (unread_count != 0),
-                                      child: Text(
-                                        unread_count.toString(),
-                                      )),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ]);
+        builder: (context, box, widgets) {
+          return LayoutBuilder(
+            builder: (BuildContext ctx, constraints) {
+              List<Map<String, dynamic>> messages = [
+                {"is_outgoing": true, "content": "hello world"},
+              ];
+              Widget bodyLandscape(Widget mainBody) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Flexible(child: NavigationBar()),
+                    Expanded(flex: 4, child: mainBody),
+                  ],
+                );
               }
 
-              return SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                child: is_potrait ? ConstrainedBox(constraints: BoxConstraints(minWidth: constraints.maxHeight, minHeight: constraints.maxHeight), child: bodyHome()) : bodyLandscape(bodyHome()),
-              );
-            }
-            if (typePage == "feature") {}
-            if (typePage == "chat") {
-              Widget bodyChat = Container(
-                width: MediaQuery.of(context).size.width,
-                decoration: const BoxDecoration(
-                    /*
+              debug(typePage);
+              if (typePage == "home") {
+                List chats = getValue("chats", []);
+                Widget bodyHome() {
+                  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).padding.top,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(15),
+                      child: Row(
+                        children: const [
+                          Text(
+                            "AzkaGram",
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Spacer(),
+                          Icon(
+                            Iconsax.search_normal,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Text(
+                        "Channels",
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 250.0,
+                      child: Builder(builder: (ctx) {
+                        var chatChannels = chats.where((res) {
+                          if (res["type"] == "channel") {
+                            return true;
+                          }
+                          return false;
+                        }).toList();
+                        return ListView.builder(
+                          physics: const ClampingScrollPhysics(),
+                          shrinkWrap: true,
+                          scrollDirection: Axis.horizontal,
+                          itemCount: chatChannels.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            var nick_name = "";
+                            var member_count = "";
+                            var path_image = "";
+                            if (chatChannels[index]["title"] is String) {
+                              nick_name = chatChannels[index]["title"];
+                            }
+                            if (chatChannels[index]["detail"] is Map) {
+                              if (chatChannels[index]["detail"]["member_count"] is int) {
+                                member_count = chatChannels[index]["detail"]["member_count"].toString();
+                              }
+                            }
+                            if (nick_name.isEmpty) {
+                              print(chatChannels[index]);
+                            }
+                            var res = chatChannels[index];
+                            if (res["profile_photo"] is Map) {
+                              if (res["profile_photo"]["path"] is String == false || (res["profile_photo"]["path"] as String).isEmpty) {
+                                tg.debugRequest("getRemoteFile",
+                                    parameters: {
+                                      "remote_file_id": res["profile_photo"]["file_id"],
+                                      "priority": 1,
+                                    },
+                                    is_log: false, callback: (ress) {
+                                  if (ress is Map) {
+                                    if (ress["local"] is Map) {
+                                      if (ress["local"]["path"] is String == false || (ress["local"]["path"] as String).isEmpty) {
+                                        tg.debugRequest("downloadFile", parameters: {"file_id": ress["id"], "priority": 1});
+                                      }
+                                      if (ress["local"]["is_downloading_completed"] is bool && ress["local"]["is_downloading_completed"]) {
+                                        for (var i = 0; i < chats.length; i++) {
+                                          if (chats[i]["id"] == res["id"]) {
+                                            var getPathPhoto = ress["local"]["path"] as String;
+                                            if (getPathPhoto.isNotEmpty) {
+                                              chats[i]["profile_photo"]["path"] = getPathPhoto;
+                                            } else {
+                                              if (getPathPhoto.isNotEmpty) {
+                                                chats[i]["profile_photo"]["path"] = getPathPhoto;
+                                              }
+                                            }
+                                            print("pke");
+                                            // chats[i]["profile_photos"] = getPhoto["photo"]["local"]["path"];
+                                            print("oke");
+                                            setState(() {
+                                              setValue("chats", chats);
+                                            });
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                });
+                                // tg.debugRequest("getSupergroupFullInfo", is_log: false, parameters: {
+                                //   "supergroup_id": int.parse(chatChannels[index]["id"].toString().replaceAll(RegExp(r"-100", caseSensitive: false), "")),
+                                // }, callback: (res) {
+                                //   try {
+                                //     if (res is Map) {
+                                //       if (res["photo"] is Map) {
+                                //         if (res["photo"]["@type"] == "chatPhoto") {
+                                //           if (res["photo"]["sizes"] is List) {
+                                //             var getPhoto = res["photo"]["sizes"][res["photo"]["sizes"].length - 1];
+                                //             for (var i = 0; i < chats.length; i++) {
+                                //               if (chats[i]["id"] == chatChannels[index]["id"]) {
+                                //                 var getPathPhoto = getPhoto["photo"]["local"]["path"] as String;
+                                //                 if (getPathPhoto.isNotEmpty) {
+                                //                   print(getPathPhoto);
+                                //                   chats[i]["profile_photos"] = getPhoto["photo"]["local"]["path"];
+                                //                 } else {
+                                //                   if (getPathPhoto.isNotEmpty) {
+                                //                     chats[i]["profile_photos"] = getPhoto["photo"]["local"]["path"];
+                                //                   }
+                                //                   tg.debugRequest("downloadFile", parameters: {"file_id": getPhoto["photo"]["id"], "priority": 1});
+                                //                 }
+                                //                 // chats[i]["profile_photos"] = getPhoto["photo"]["local"]["path"];
+
+                                //                 setState(() {
+                                //                   setValue("chats", chats);
+                                //                 });
+                                //               }
+                                //             }
+                                //           }
+                                //         }
+                                //       }
+                                //     }
+                                //   } catch (e) {}
+                                // });
+                              } else if ((res["profile_photo"]["path"] as String).isNotEmpty) {
+                                path_image = res["profile_photo"]["path"];
+                              }
+                            }
+
+                            if (path_image.isNotEmpty) {
+                              var file = File(path_image);
+                              if (!file.existsSync()) {
+                                path_image = "";
+                                for (var i = 0; i < chats.length; i++) {
+                                  if (chats[i] is Map) {
+                                    try {
+                                      if (chats[i]["id"] = chatChannels[index]["id"]) {
+                                        chats[i]["profile_photo"]["path"] = null;
+                                        setValue("chats", chats);
+                                      }
+                                    } catch (e) {
+                                      debug(e);
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(1),
+                                      spreadRadius: 1,
+                                      blurRadius: 7,
+                                      offset: const Offset(0, 3), // changes position of shadow
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  children: [
+                                    chooseWidget(
+                                      isMain: path_image.isNotEmpty,
+                                      main: Container(
+                                        width: 150,
+                                        decoration: BoxDecoration(
+                                          borderRadius: const BorderRadius.all(Radius.circular(30)),
+                                          image: DecorationImage(fit: BoxFit.cover, image: Image.file(File(path_image)).image),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.grey.withOpacity(1),
+                                              spreadRadius: 1,
+                                              blurRadius: 7,
+                                              offset: const Offset(0, 3), // changes position of shadow
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      second: Container(
+                                        width: 150,
+                                        height: 250,
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue,
+                                          borderRadius: const BorderRadius.all(Radius.circular(30)),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.grey.withOpacity(1),
+                                              spreadRadius: 1,
+                                              blurRadius: 7,
+                                              offset: const Offset(0, 3), // changes position of shadow
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Center(
+                                          child: Text(
+                                            "no Image",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 15,
+                                      left: 15,
+                                      child: Row(
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(right: 2),
+                                            child: Container(
+                                              constraints: const BoxConstraints(
+                                                maxWidth: double.infinity,
+                                                maxHeight: double.infinity,
+                                              ),
+                                              padding: const EdgeInsets.all(10),
+                                              decoration: BoxDecoration(
+                                                color: const ui.Color.fromARGB(198, 0, 0, 0),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: const Text(
+                                                "live",
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 2),
+                                            child: Container(
+                                              constraints: const BoxConstraints(
+                                                maxWidth: double.infinity,
+                                                maxHeight: double.infinity,
+                                              ),
+                                              padding: const EdgeInsets.all(10),
+                                              decoration: BoxDecoration(
+                                                color: const ui.Color.fromARGB(197, 131, 131, 131),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                member_count,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Positioned(
+                                      bottom: 15,
+                                      left: 15,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(right: 2),
+                                        child: Container(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: double.infinity,
+                                            maxHeight: double.infinity,
+                                          ),
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: const ui.Color.fromARGB(197, 136, 136, 136),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            nick_name,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Text(
+                        "Chats",
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    ...chats.where((res) {
+                      if (res["type"] != "channel") {
+                        return true;
+                      }
+                      return false;
+                    }).map((res) {
+                      var nick_name = "";
+                      Map last_message = {};
+                      var type_content = "";
+                      var message = "";
+                      bool isFile = false;
+                      var path_image = "";
+                      var content = "";
+
+                      if (res["last_message"] is Map && (res["last_message"] as Map).isNotEmpty) {
+                        last_message = res["last_message"];
+                        if (last_message["type_content"] is String && (last_message["type_content"] as String).isNotEmpty) {
+                          type_content = last_message["type_content"];
+                        }
+                      }
+                      if (last_message["caption"] is String) {
+                        isFile = true;
+                        message = last_message["caption"];
+                      }
+                      if (last_message["photo"] is List) {
+                        isFile = true;
+                        var getPhoto = last_message["photo"][last_message["photo"].length - 1];
+                        if (getPhoto is Map && (getPhoto["path"] as String).isEmpty) {
+                          tg.debugRequest("downloadFile", is_log: false, parameters: {"file_id": getPhoto["id"], "priority": 1}, callback: (ress) {
+                            try {
+                              if (ress is Map && ress["local"] is Map && ress["local"]["is_downloading_completed"] is bool && ress["local"]["is_downloading_completed"]) {
+                                for (var i = 0; i < chats.length; i++) {
+                                  if (chats[i]["id"] == res["id"]) {
+                                    var getPathPhoto = ress["local"]["path"] as String;
+                                    if (getPathPhoto.isNotEmpty) {
+                                      chats[i]["last_message"]["photo"][chats[i]["last_message"]["photo"].length - 1]["path"] = getPathPhoto;
+                                    } else {
+                                      if (getPathPhoto.isNotEmpty) {
+                                        chats[i]["last_message"]["photo"][chats[i]["last_message"]["photo"].length - 1]["path"] = getPathPhoto;
+                                      }
+                                    }
+
+                                    setState(() {
+                                      setValue("chats", chats);
+                                    });
+                                  }
+                                }
+                              }
+                            } catch (e) {}
+                          });
+                        } else {
+                          var file = File(getPhoto["path"]);
+                          if (file.existsSync()) {
+                            content = getPhoto["path"];
+                          } else {
+                            for (var i = 0; i < chats.length; i++) {
+                              if (chats[i]["id"] == res["id"]) {
+                                chats[i]["last_message"]["photo"][chats[i]["last_message"]["photo"].length - 1]["path"] = "";
+                                setState(() {
+                                  setValue("chats", chats);
+                                });
+                              }
+                            }
+                          }
+                        }
+                      }
+                      if (last_message["text"] is String) {
+                        message = last_message["text"];
+                      }
+
+                      if (kDebugMode) {
+                        print(res["id"]);
+                      }
+                      int unread_count = 0;
+                      var date = "";
+                      var chat_type = "private";
+                      if (res["type"] is String) {
+                        chat_type = res["type"];
+                      }
+                      if (last_message["date"] is int) {
+                        date = last_message["date"].toString();
+                      }
+                      if (res["type"] == "private") {
+                        nick_name = res["first_name"];
+                      } else {
+                        nick_name = res["title"];
+                      }
+                      if (res["detail"] is Map) {
+                        if (res["detail"]["unread_count"] is int) {
+                          unread_count = res["detail"]["unread_count"];
+                        }
+                      }
+                      prettyPrintJson(res["profile_photo"], is_log: true);
+                      if (res["profile_photo"] is Map) {
+                        debug(res);
+                        if (res["profile_photo"]["path"] is String == false || (res["profile_photo"]["path"] as String).isEmpty) {
+                          debug("sd");
+                          tg.debugRequest("getRemoteFile",
+                              parameters: {
+                                "remote_file_id": res["profile_photo"]["file_id"],
+                                "priority": 1,
+                              },
+                              is_log: false, callback: (ress) {
+                            if (ress is Map) {
+                              if (ress["local"] is Map) {
+                                if (ress["local"]["path"] is String == false || (ress["local"]["path"] as String).isEmpty) {
+                                  tg.debugRequest("downloadFile", parameters: {"file_id": ress["id"], "priority": 1});
+                                }
+                                if (ress["local"]["is_downloading_completed"] is bool && ress["local"]["is_downloading_completed"]) {
+                                  for (var i = 0; i < chats.length; i++) {
+                                    if (chats[i]["id"] == res["id"]) {
+                                      var getPathPhoto = ress["local"]["path"] as String;
+                                      if (getPathPhoto.isNotEmpty) {
+                                        chats[i]["profile_photo"]["path"] = getPathPhoto;
+                                      } else {
+                                        if (getPathPhoto.isNotEmpty) {
+                                          chats[i]["profile_photo"]["path"] = getPathPhoto;
+                                        }
+                                      }
+                                      print("pke");
+                                      // chats[i]["profile_photos"] = getPhoto["photo"]["local"]["path"];
+                                      print("oke");
+                                      setState(() {
+                                        setValue("chats", chats);
+                                      });
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          });
+                          // tg.debugRequest("getSupergroupFullInfo", is_log: false, parameters: {
+                          //   "supergroup_id": int.parse(chatChannels[index]["id"].toString().replaceAll(RegExp(r"-100", caseSensitive: false), "")),
+                          // }, callback: (res) {
+                          //   try {
+                          //     if (res is Map) {
+                          //       if (res["photo"] is Map) {
+                          //         if (res["photo"]["@type"] == "chatPhoto") {
+                          //           if (res["photo"]["sizes"] is List) {
+                          //             var getPhoto = res["photo"]["sizes"][res["photo"]["sizes"].length - 1];
+                          //             for (var i = 0; i < chats.length; i++) {
+                          //               if (chats[i]["id"] == chatChannels[index]["id"]) {
+                          //                 var getPathPhoto = getPhoto["photo"]["local"]["path"] as String;
+                          //                 if (getPathPhoto.isNotEmpty) {
+                          //                   print(getPathPhoto);
+                          //                   chats[i]["profile_photos"] = getPhoto["photo"]["local"]["path"];
+                          //                 } else {
+                          //                   if (getPathPhoto.isNotEmpty) {
+                          //                     chats[i]["profile_photos"] = getPhoto["photo"]["local"]["path"];
+                          //                   }
+                          //                   tg.debugRequest("downloadFile", parameters: {"file_id": getPhoto["photo"]["id"], "priority": 1});
+                          //                 }
+                          //                 // chats[i]["profile_photos"] = getPhoto["photo"]["local"]["path"];
+
+                          //                 setState(() {
+                          //                   setValue("chats", chats);
+                          //                 });
+                          //               }
+                          //             }
+                          //           }
+                          //         }
+                          //       }
+                          //     }
+                          //   } catch (e) {}
+                          // });
+                        } else if ((res["profile_photo"]["path"] as String).isNotEmpty) {
+                          path_image = res["profile_photo"]["path"];
+                        }
+                      }
+
+                      if (path_image.isNotEmpty) {
+                        var file = File(path_image);
+                        if (!file.existsSync()) {
+                          path_image = "";
+                          for (var i = 0; i < chats.length; i++) {
+                            if (chats[i] is Map) {
+                              try {
+                                if (chats[i]["id"] = res["id"]) {
+                                  chats[i]["profile_photo"]["path"] = null;
+
+                                  setValue("chats", chats);
+                                }
+                              } catch (e) {}
+                            }
+                          }
+                        }
+                      }
+
+                      if (isFile) {
+                        if (content.isEmpty) {
+                          isFile = false;
+                        }
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Container(
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(25),
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(1),
+                                spreadRadius: 1,
+                                blurRadius: 7,
+                                offset: const Offset(0, 3), // changes position of shadow
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Visibility(
+                                visible: isFile,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 15),
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        width: MediaQuery.of(context).size.width,
+                                        height: 200,
+                                        decoration: BoxDecoration(
+                                          borderRadius: const BorderRadius.all(Radius.circular(20)),
+                                          image: DecorationImage(fit: BoxFit.cover, image: Image.file(File(content)).image),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.grey.withOpacity(1),
+                                              spreadRadius: 1,
+                                              blurRadius: 7,
+                                              offset: const Offset(0, 3), // changes position of shadow
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 15,
+                                        right: 15,
+                                        child: Container(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: double.infinity,
+                                            maxHeight: double.infinity,
+                                          ),
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: const ui.Color.fromARGB(199, 158, 158, 158),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            chat_type,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  chooseWidget(
+                                    isMain: path_image.isNotEmpty,
+                                    main: Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        borderRadius: const BorderRadius.all(Radius.circular(15)),
+                                        image: DecorationImage(fit: BoxFit.cover, image: Image.file(File(path_image)).image),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.grey.withOpacity(1),
+                                            spreadRadius: 1,
+                                            blurRadius: 7,
+                                            offset: const Offset(0, 3), // changes position of shadow
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    second: Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        borderRadius: const BorderRadius.all(Radius.circular(15)),
+                                        color: Colors.yellow,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.grey.withOpacity(1),
+                                            spreadRadius: 1,
+                                            blurRadius: 7,
+                                            offset: const Offset(0, 3), // changes position of shadow
+                                          ),
+                                        ],
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          nick_name[0],
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(10),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            nick_name,
+                                            style: const TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            height: 5,
+                                          ),
+                                          Text(
+                                            (date is int) ? date.toString() : "",
+                                            maxLines: 2,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(10),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            constraints: const BoxConstraints(
+                                              maxWidth: double.infinity,
+                                              maxHeight: double.infinity,
+                                            ),
+                                            padding: const EdgeInsets.all(5),
+                                            decoration: BoxDecoration(
+                                              color: const ui.Color.fromARGB(198, 0, 0, 0),
+                                              borderRadius: BorderRadius.circular(5),
+                                            ),
+                                            child: Text(
+                                              chat_type,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            height: 5,
+                                          ),
+                                          Container(
+                                            constraints: const BoxConstraints(
+                                              maxWidth: double.infinity,
+                                              maxHeight: double.infinity,
+                                            ),
+                                            padding: const EdgeInsets.all(5),
+                                            decoration: BoxDecoration(
+                                              color: const ui.Color.fromARGB(198, 0, 0, 0),
+                                              borderRadius: BorderRadius.circular(5),
+                                            ),
+                                            child: Text(
+                                              (last_message["is_outgoing"] is bool && last_message["is_outgoing"]) ? "Outgoing" : "Incomming",
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Visibility(
+                                visible: message.isNotEmpty,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(5),
+                                  child: Text(
+                                    message,
+                                    style: const TextStyle(
+                                      color: ui.Color.fromARGB(255, 48, 48, 48),
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                    maxLines: 4,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(
+                                height: 10,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ]);
+                }
+
+                return SingleChildScrollView(
+                  controller: scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  child: is_potrait ? ConstrainedBox(constraints: BoxConstraints(minWidth: constraints.maxHeight, minHeight: constraints.maxHeight), child: bodyHome()) : bodyLandscape(bodyHome()),
+                );
+              }
+              if (typePage == "feature") {}
+              if (typePage == "chat") {
+                Widget bodyChat = Container(
+                  width: MediaQuery.of(context).size.width,
+                  decoration: const BoxDecoration(
+                      /*
                 
             image: DecorationImage(
               image: AssetImage(
@@ -2205,246 +2947,514 @@ class _MainPageState extends State<MainPage> {
               fit: BoxFit.cover,
             ),
             */
-                    ),
-                child: Column(
-                  children: [
-                    Visibility(
-                      visible: !is_potrait,
-                      child: chatAppBar(),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        primary: false,
-                        itemCount: messages.length,
-                        shrinkWrap: true,
-                        scrollDirection: Axis.vertical,
-                        padding: const EdgeInsets.only(top: 10),
-                        physics: const BouncingScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          return GestureDetector(
-                            onTap: () {
-                              if (kDebugMode) {
-                                print("tap");
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.only(
-                                right: 5.0,
-                                left: 5.0,
-                                bottom: 10,
+                      ),
+                  child: Column(
+                    children: [
+                      Visibility(
+                        visible: !is_potrait,
+                        child: chatAppBar(),
+                      ),
+                      Expanded(
+                        child: ListView.builder(
+                          primary: false,
+                          itemCount: messages.length,
+                          shrinkWrap: true,
+                          scrollDirection: Axis.vertical,
+                          padding: const EdgeInsets.only(top: 10),
+                          physics: const BouncingScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            return GestureDetector(
+                              onTap: () {
+                                if (kDebugMode) {
+                                  print("tap");
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.only(
+                                  right: 5.0,
+                                  left: 5.0,
+                                  bottom: 10,
+                                ),
+                                child: Align(
+                                  alignment: (messages[index]["is_outgoing"] ? Alignment.topRight : Alignment.topLeft),
+                                  child: Container(
+                                    constraints: BoxConstraints(
+                                      maxWidth: MediaQuery.of(context).size.width - 45,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: messages[index]["is_outgoing"]
+                                          ? BorderRadius.only(
+                                              topRight: Radius.circular((messages.length == (index + 1)) ? 0 : 11),
+                                              topLeft: const Radius.circular(11),
+                                              bottomRight: Radius.circular((index == 0)
+                                                  ? (messages.length == 1)
+                                                      ? 11
+                                                      : 0
+                                                  : 11),
+                                              bottomLeft: const Radius.circular(11),
+                                            )
+                                          : BorderRadius.only(
+                                              topRight: const Radius.circular(11),
+                                              topLeft: Radius.circular((messages.length == (index + 1)) ? 0 : 11),
+                                              bottomRight: const Radius.circular(11),
+                                              bottomLeft: Radius.circular((index == 0)
+                                                  ? (messages.length == 1)
+                                                      ? 11
+                                                      : 0
+                                                  : 11),
+                                            ),
+                                      color: (messages[index]["is_outgoing"] ? Colors.blue[200] : Colors.grey.shade200),
+                                    ),
+                                    padding: const EdgeInsets.all(16),
+                                    child: Text(
+                                      messages[index]["content"],
+                                      style: const TextStyle(fontSize: 15),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              child: Align(
-                                alignment: (messages[index]["is_outgoing"] ? Alignment.topRight : Alignment.topLeft),
-                                child: Container(
-                                  constraints: BoxConstraints(
-                                    maxWidth: MediaQuery.of(context).size.width - 45,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: messages[index]["is_outgoing"]
-                                        ? BorderRadius.only(
-                                            topRight: Radius.circular((messages.length == (index + 1)) ? 0 : 11),
-                                            topLeft: const Radius.circular(11),
-                                            bottomRight: Radius.circular((index == 0)
-                                                ? (messages.length == 1)
-                                                    ? 11
-                                                    : 0
-                                                : 11),
-                                            bottomLeft: const Radius.circular(11),
-                                          )
-                                        : BorderRadius.only(
-                                            topRight: const Radius.circular(11),
-                                            topLeft: Radius.circular((messages.length == (index + 1)) ? 0 : 11),
-                                            bottomRight: const Radius.circular(11),
-                                            bottomLeft: Radius.circular((index == 0)
-                                                ? (messages.length == 1)
-                                                    ? 11
-                                                    : 0
-                                                : 11),
-                                          ),
-                                    color: (messages[index]["is_outgoing"] ? Colors.blue[200] : Colors.grey.shade200),
-                                  ),
-                                  padding: const EdgeInsets.all(16),
+                            );
+                          },
+                        ),
+                      ),
+                      Container(
+                        width: MediaQuery.of(context).size.width,
+                        constraints: const BoxConstraints(
+                          maxHeight: 150.0,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Color(0xffFFFFFF),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              spreadRadius: 0,
+                              blurRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          keyboardType: TextInputType.multiline,
+                          maxLines: 100,
+                          minLines: 1,
+                          decoration: InputDecoration(
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.all(5.0),
+                              child: InkWell(
+                                child: const Icon(
+                                  Iconsax.happyemoji,
+                                  color: Colors.pink,
+                                  size: 25,
+                                ),
+                                onTap: () {},
+                              ),
+                            ),
+                            suffixIcon: Padding(
+                              padding: const EdgeInsets.all(5.0),
+                              child: InkWell(
+                                child: const Icon(
+                                  Iconsax.send_1,
+                                  color: Colors.blue,
+                                  size: 25,
+                                ),
+                                onTap: () {},
+                              ),
+                            ),
+                            hintText: "Typing here",
+                            hintStyle: const TextStyle(color: Colors.grey),
+                            border: InputBorder.none,
+                          ),
+                          onChanged: (text) {},
+                          onTap: () {},
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+                if (is_potrait) {
+                  return bodyChat;
+                } else {
+                  return bodyLandscape(bodyChat);
+                }
+              }
+
+              if (typePage == "me") {
+                var is_bot = false;
+                var nick_name = "";
+                var username = "";
+                var path_image = "";
+                var is_verified = false;
+                if (widget.get_me["is_bot"] is bool) {
+                  is_bot = widget.get_me["is_bot"];
+                }
+                if (widget.get_me["username"] is String && (widget.get_me["username"] as String).isNotEmpty) {
+                  nick_name = widget.get_me["username"];
+                }
+                if (widget.get_me["first_name"] is String && (widget.get_me["first_name"] as String).isNotEmpty) {
+                  nick_name = widget.get_me["first_name"];
+                }
+                if (widget.get_me["last_name"] is String && (widget.get_me["last_name"] as String).isNotEmpty) {
+                  nick_name += " ${widget.get_me["last_name"]}";
+                }
+                if (widget.get_me["profile_photo"] is Map) {
+                  if (widget.get_me["profile_photo"]["path"] is String) {
+                    path_image = widget.get_me["profile_photo"]["path"];
+                  }
+                }
+                if (path_image.isNotEmpty) {
+                  var file = File(path_image);
+                  if (!file.existsSync()) {
+                    path_image = "";
+                  }
+                }
+
+                if (path_image.isEmpty) {
+                  tg.debugRequest("getMe", callback: (res) {
+                    prettyPrintJson(res, is_log: true);
+                    if (res is Map && res["ok"] is bool && res["ok"] && res["result"] is Map) {
+                      var result = res["result"];
+                      if (result["profile_photo"] is Map) {
+                        if (result["profile_photo"]["path"] is String && (result["profile_photo"]["path"] as String).isNotEmpty) {
+                          var getUsers = getValue("users", []);
+                          for (var i = 0; i < getUsers.length; i++) {
+                            var loop_data = getUsers[i];
+                            if (loop_data is Map && loop_data["id"] == result["id"]) {
+                              if (loop_data["profile_photo"] is Map == false) {
+                                getUsers[i]["profile_photo"] = result["profile_photo"];
+                              }
+                              getUsers[i]["profile_photo"]["path"] = result["profile_photo"]["path"];
+                              setValue("users", getUsers);
+                            }
+                          }
+                        }
+                      }
+                    }
+                  });
+                }
+                Widget contentListSettings(String title, {required void Function() onPressed, required IconData icon, double? vertical, double? horizontal}) {
+                  return MaterialButton(
+                    onPressed: onPressed,
+                    padding: EdgeInsets.symmetric(horizontal: horizontal ?? 20, vertical: vertical ?? 20),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Icon(icon),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 15),
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        const Icon(Iconsax.arrow_right_1),
+                      ],
+                    ),
+                  );
+                }
+
+                Widget bodyChat = SingleChildScrollView(
+                  controller: scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxHeight, minHeight: constraints.maxHeight),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).padding.top,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Center(
+                            child: chooseWidget(
+                              isMain: path_image.isNotEmpty,
+                              main: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  borderRadius: const BorderRadius.all(Radius.circular(35)),
+                                  image: DecorationImage(fit: BoxFit.cover, image: Image.file(File(path_image)).image),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(1),
+                                      spreadRadius: 1,
+                                      blurRadius: 7,
+                                      offset: const Offset(0, 3), // changes position of shadow
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              second: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  borderRadius: const BorderRadius.all(Radius.circular(35)),
+                                  color: Colors.yellow,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(1),
+                                      spreadRadius: 1,
+                                      blurRadius: 7,
+                                      offset: const Offset(0, 3), // changes position of shadow
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
                                   child: Text(
-                                    messages[index]["content"],
-                                    style: const TextStyle(fontSize: 15),
+                                    nick_name[0],
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                    Container(
-                      width: MediaQuery.of(context).size.width,
-                      constraints: const BoxConstraints(
-                        maxHeight: 150.0,
-                      ),
-                      decoration: const BoxDecoration(
-                        color: Color(0xffFFFFFF),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            spreadRadius: 0,
-                            blurRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        keyboardType: TextInputType.multiline,
-                        maxLines: 100,
-                        minLines: 1,
-                        decoration: InputDecoration(
-                          prefixIcon: Padding(
-                            padding: const EdgeInsets.all(5.0),
-                            child: InkWell(
-                              child: const Icon(
-                                Iconsax.happyemoji,
-                                color: Colors.pink,
-                                size: 25,
-                              ),
-                              onTap: () {},
-                            ),
-                          ),
-                          suffixIcon: Padding(
-                            padding: const EdgeInsets.all(5.0),
-                            child: InkWell(
-                              child: const Icon(
-                                Iconsax.send_1,
-                                color: Colors.blue,
-                                size: 25,
-                              ),
-                              onTap: () {},
-                            ),
-                          ),
-                          hintText: "Typing here",
-                          hintStyle: const TextStyle(color: Colors.grey),
-                          border: InputBorder.none,
-                        ),
-                        onChanged: (text) {},
-                        onTap: () {},
-                      ),
-                    ),
-                  ],
-                ),
-              );
-              if (is_potrait) {
-                return bodyChat;
-              } else {
-                return bodyLandscape(bodyChat);
-              }
-            }
-            debug(typePage);
-            if (typePage == "settings") {
-              Widget contentListSettings(String title, {required void Function() onPressed, required IconData icon, double? vertical, double? horizontal}) {
-                return MaterialButton(
-                  onPressed: onPressed,
-                  padding: EdgeInsets.symmetric(horizontal: horizontal ?? 20, vertical: vertical ?? 20),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Icon(icon),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 15),
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
-                      const Spacer(),
-                      const Icon(Iconsax.arrow_right_1),
-                    ],
+                        Visibility(
+                          visible: username.isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Center(
+                              child: Text(
+                                username,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Center(
+                            child: chooseWidget(
+                              isMain: true,
+                              main: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    nick_name,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Iconsax.verify5,
+                                    color: Colors.blue,
+                                  )
+                                ],
+                              ),
+                              second: Text(
+                                nick_name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Flexible(
+                                child: Column(
+                                  children: const [
+                                    Text(
+                                      "5",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: 5,
+                                    ),
+                                    Text(
+                                      "Followings",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Flexible(
+                                child: Column(
+                                  children: const [
+                                    Text(
+                                      "345",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: 5,
+                                    ),
+                                    Text(
+                                      "Fans",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TabBar(
+                          physics: AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                          controller: _tabController,
+                          labelColor: Colors.black,
+                          unselectedLabelColor: Colors.grey.shade600,
+                          indicatorColor: Colors.black,
+                          tabs: const [
+                            Tab(
+                              text: "Me",
+                              icon: Icon(Iconsax.user),
+                            ),
+                            Tab(
+                              text: "Settings",
+                              icon: Icon(
+                                Iconsax.activity,
+                              ),
+                            ),
+                          ],
+                        ),
+                        ...[
+                          [
+                            Center(
+                              child: Text("Hello world"),
+                            ),
+                          ],
+                          [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(1),
+                                      spreadRadius: 1,
+                                      blurRadius: 7,
+                                      offset: const Offset(0, 3), // changes position of shadow
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    contentListSettings("About", onPressed: () {}, icon: Iconsax.book),
+                                    contentListSettings("Notes", onPressed: () {}, icon: Iconsax.note),
+                                    contentListSettings("Settings", onPressed: () {}, icon: Iconsax.setting),
+                                    Row(
+                                      children: const [
+                                        Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 5),
+                                            child: Divider(),
+                                          ),
+                                        ),
+                                        Text(
+                                          "Extra Features",
+                                          style: TextStyle(fontWeight: FontWeight.w700),
+                                        ),
+                                        Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 5),
+                                            child: Divider(),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    contentListSettings("Automation", onPressed: () {}, icon: Iconsax.mobile_programming),
+                                    contentListSettings("Plays", onPressed: () {}, icon: Iconsax.play),
+                                    contentListSettings("Story", onPressed: () {}, icon: Iconsax.activity),
+                                    contentListSettings("Tools", onPressed: () {}, icon: Iconsax.hierarchy),
+                                    Row(
+                                      children: const [
+                                        Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 5),
+                                            child: Divider(),
+                                          ),
+                                        ),
+                                        Text(
+                                          "HexaMinate Integrated app",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 5),
+                                            child: Divider(),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    contentListSettings("About HexaMinate", onPressed: () async {}, icon: Iconsax.external_drive),
+                                    contentListSettings("Blog", onPressed: () async {}, icon: Iconsax.external_drive),
+                                    contentListSettings("Shop", onPressed: () async {}, icon: Iconsax.shop),
+                                    contentListSettings("Wallet", onPressed: () async {}, icon: Iconsax.wallet),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ][_tabController.index],
+                      ],
+                    ),
                   ),
                 );
+                if (is_potrait) {
+                  return bodyChat;
+                } else {
+                  return bodyLandscape(bodyChat);
+                }
               }
 
-              Widget bodyChat = SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Visibility(
-                      visible: is_potrait,
-                      child: chatAppBar(),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(1),
-                              spreadRadius: 1,
-                              blurRadius: 7,
-                              offset: const Offset(0, 3), // changes position of shadow
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            contentListSettings("App Features", onPressed: () {}, icon: Iconsax.message_question),
-                            contentListSettings("Settings", onPressed: () {}, icon: Iconsax.setting),
-                            Row(
-                              children: const [Expanded(child: Divider())],
-                            ),
-                            contentListSettings("App Features", onPressed: () {}, icon: Iconsax.message_question),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
               if (is_potrait) {
-                return bodyChat;
+                return Text(
+                  "hello world",
+                  style: TextStyle(color: color_main),
+                );
               } else {
-                return bodyLandscape(bodyChat);
+                return bodyLandscape(Text(
+                  "hello world",
+                  style: TextStyle(color: color_main),
+                ));
               }
-            }
-
-            if (is_potrait) {
-              return Text(
-                "hello world",
-                style: TextStyle(color: color_main),
-              );
-            } else {
-              return bodyLandscape(Text(
-                "hello world",
-                style: TextStyle(color: color_main),
-              ));
-            }
-          });
+            },
+          );
         },
       ),
       floatingActionButton: Visibility(
-        visible: getValue("floating_button", false),
+        visible: false,
         child: Builder(builder: (BuildContext ctx) {
           return FloatingActionButton(
             onPressed: () async {},
-            child: Icon(Iconsax.activity),
+            child: const Icon(Iconsax.activity),
           );
         }),
       ),
-      appBar: getValue("is_contains_app_bar", false)
-          ? PreferredSize(
-              preferredSize: const Size.fromHeight(50),
-              child: Builder(builder: (ctx) {
-                if (typePage == "chat") {
-                  return chatAppBar();
-                }
-                return Container();
-              }),
-            )
-          : null,
       bottomNavigationBar: Visibility(
         visible: (getValue("is_contains_navigation_bar", true) && is_potrait),
         child: Builder(
@@ -2523,7 +3533,7 @@ void debugPopUp(BuildContext context, var res, {bool is_log = false}) {
                   color: const Color(0xffF0F8FF),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                padding: EdgeInsets.all(5),
+                padding: const EdgeInsets.all(5),
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

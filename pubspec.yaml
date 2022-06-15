@@ -1,7 +1,7 @@
 name: azkagram
 description: A new Flutter project.
 publish_to: 'none'
-version: 1.0.0+1
+version: 0.0.0
 
 environment:
   sdk: ">=2.16.0 <3.0.0"
@@ -18,8 +18,11 @@ dependencies:
   hive_flutter: ^1.1.0
   zxing2: ^0.1.0
   image: ^3.2.0
-  telegram_client: ^0.3.4
+  telegram_client:
+    path: /home/hexaminate/Documents/HEXAMINATE/library/telegram_client/dart/telegram_client
   simulate: ^0.0.7
+  pull_to_refresh: ^2.0.0
+  hidable: ^1.0.2
   
 dev_dependencies:
   flutter_test:

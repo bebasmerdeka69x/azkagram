@@ -212,6 +212,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.1.4"
+  hidable:
+    dependency: "direct main"
+    description:
+      name: hidable
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.2"
   hive:
     dependency: transitive
     description:
@@ -387,6 +394,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "4.2.4"
+  pull_to_refresh:
+    dependency: "direct main"
+    description:
+      name: pull_to_refresh
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "2.0.0"
   simulate:
     dependency: "direct main"
     description:
@@ -430,9 +444,9 @@ packages:
   telegram_client:
     dependency: "direct main"
     description:
-      name: telegram_client
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: "/home/hexaminate/Documents/HEXAMINATE/library/telegram_client/dart/telegram_client"
+      relative: false
+    source: path
     version: "0.3.4"
   term_glyph:
     dependency: transitive
