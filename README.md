@@ -52,3 +52,33 @@ flutter run
 ```
 
 Jika terjadi error path tdlib tidak ada maka kalian harus compile sendiri ya [Compile Tdlib](https://github.com/tdlib/td)
+
+
+Jika sudah kalian copy hasil compile tdlib
+
+1. Android
+  `android/app/src/jniLibs/{arch_android}/libtdjson.so`
+  example:
+  `azkagram/android/app/src/jniLibs/arm64-v8a/libtdjson.so`
+  
+  + build.gradle
+  contoh kalian bisa liat di `android/app/build.gradle`
+  ```bash
+  main {
+    jniLibs.srcDirs = ['src/jniLibs']
+  }
+  ```
+
+2. Linux
+   - Method 1
+    paste hasil libtdjson.so ke path `/usr/lib/libtdjson.so`
+     
+3. Windows
+   saya tidak tahu karena saya tidak pakai windows
+
+4. macOS
+   Saya tidak tahu karena saya tidak pakai macOS
+
+5. iOS
+   saya tidak tahu karena saya tidak pakai iOS
+
