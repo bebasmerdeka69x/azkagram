@@ -17,6 +17,9 @@ import 'package:telegram_client/telegram_client.dart';
 import 'package:simulate/simulate.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'dart:math' as math;
+
+import 'package:fl_chart/fl_chart.dart';
 bool is_debug = false;
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -3552,3 +3555,4 @@ void debugPopUp(BuildContext context, var res, {bool is_log = false}) {
     },
   );
 }
+

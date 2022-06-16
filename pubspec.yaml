@@ -23,6 +23,7 @@ dependencies:
   simulate: ^0.0.7
   pull_to_refresh: ^2.0.0
   hidable: ^1.0.2
+  fl_chart: ^0.36.2
   
 dev_dependencies:
   flutter_test:
