@@ -18,8 +18,7 @@ dependencies:
   hive_flutter: ^1.1.0
   zxing2: ^0.1.0
   image: ^3.2.0
-  telegram_client:
-    path: /home/hexaminate/Documents/HEXAMINATE/library/telegram_client/dart/telegram_client
+  telegram_client: ^0.3.5
   simulate: ^0.0.7
   pull_to_refresh: ^2.0.0
   hidable: ^1.0.2
