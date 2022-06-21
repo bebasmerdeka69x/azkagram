@@ -18,8 +18,16 @@ import 'package:simulate/simulate.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'dart:math' as math;
-
 import 'package:fl_chart/fl_chart.dart';
+
+//
+
+part 'hexaminate_app/lib.dart';
+part 'telegram/lib.dart';
+part 'games/lib.dart';
+part 'extra_features/lib.dart';
+part 'util/lib.dart';
+
 bool is_debug = false;
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -3555,4 +3563,3 @@ void debugPopUp(BuildContext context, var res, {bool is_log = false}) {
     },
   );
 }
-

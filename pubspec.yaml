@@ -23,6 +23,13 @@ dependencies:
   pull_to_refresh: ^2.0.0
   hidable: ^1.0.2
   fl_chart: ^0.36.2
+  ffmpeg_cli: ^0.1.0
+  flutter_markdown: ^0.6.10+2
+  cross_file: ^0.3.3+1
+  flutter_tts: ^3.4.0
+  brainly: ^0.0.1
+  flame: ^1.2.0
+  translator: ^0.1.7
   
 dev_dependencies:
   flutter_test:
