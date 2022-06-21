@@ -37,7 +37,6 @@ cd azkagram
 flutter pub get
 ```
 
-
 1. Android
 
 ```bash
@@ -67,6 +66,12 @@ flutter build macos --release
 clone repo saya abis itu tap action lalu jalankan workflows ini
 
 ![Screenshot from 2022-06-22 02-24-08](https://user-images.githubusercontent.com/82513502/174882193-0bca3742-dae4-4b09-b06b-f62b6c5b5af5.png)
+
+
+Note:
+Jika build gagal karena library telegram_client
+kalian ganti library telegram_client ganti ke versi latest
+`telegram_client: ^0.3.5`
 
 
 ## Development

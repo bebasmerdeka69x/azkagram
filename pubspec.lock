@@ -521,9 +521,9 @@ packages:
   telegram_client:
     dependency: "direct main"
     description:
-      path: "/home/hexaminate/Documents/HEXAMINATE/library/telegram_client/dart/telegram_client"
-      relative: false
-    source: path
+      name: telegram_client
+      url: "https://pub.dartlang.org"
+    source: hosted
     version: "0.3.5"
   term_glyph:
     dependency: transitive
